@@ -2233,30 +2233,35 @@ public class PinballGameButtonsAndLights {
 
     /** GOFLASH: flash a verb/noun; the model has no keyboard, so the response is always PROCEED. */
     public int goflash(String vn) {
+        Agc.stubCalled("PinballGameButtonsAndLights.goflash " + vn + " -> PROCEED");
         new DisplayInterfaceRoutines(agc).goFlash(vnCode(vn));
         return Executive.PROCEED;
     }
 
     /** GOFLASHR: restart-protected GOFLASH. */
     public int goflashr(String vn) {
+        Agc.stubCalled("PinballGameButtonsAndLights.goflashr " + vn + " -> PROCEED");
         new DisplayInterfaceRoutines(agc).goFlashR(vnCode(vn));
         return Executive.PROCEED;
     }
 
     /** GOMARKF: flashing mark display. */
     public int gomarkf(String vn) {
+        Agc.stubCalled("PinballGameButtonsAndLights.gomarkf " + vn + " -> PROCEED");
         new DisplayInterfaceRoutines(agc).goMarkF(vnCode(vn));
         return Executive.PROCEED;
     }
 
     /** GOPERF2R: restart-protected perform display. */
     public int goperf2r(String vn) {
+        Agc.stubCalled("PinballGameButtonsAndLights.goperf2r " + vn + " -> PROCEED");
         new DisplayInterfaceRoutines(agc).goPerf2R(vnCode(vn));
         return Executive.PROCEED;
     }
 
     /** GOPERF1: perform display with NORMTEM1 = code. */
     public int gopErf1(int code) {
+        Agc.stubCalled("PinballGameButtonsAndLights.gopErf1 code=" + code + " -> PROCEED");
         new DisplayInterfaceRoutines(agc).goPerf1(code);
         return Executive.PROCEED;
     }
@@ -2268,6 +2273,6 @@ public class PinballGameButtonsAndLights {
 
     /** LINUS: priority display request. TODO: untranslated from PINBALL_GAME__BUTTONS_AND_LIGHTS.agc. */
     public void linus(int mask) {
-        // TODO: untranslated - the priority display request has no Java counterpart
+        Agc.stubCalled("PinballGameButtonsAndLights.linus mask=0" + Integer.toOctalString(mask));
     }
 }

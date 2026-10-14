@@ -339,7 +339,7 @@ public final class FreshStartAndRestart {
             if (phase > 0) {                                      // PACTIVE
                 agc.set("MPAC", phase + 1);                       // abs of phase
                 agc.set("MPAC+6", agc.get("MPAC+6") + 1);         // group demands present
-                new RestartsRoutine(agc).restarts(grp -> () -> { /* TODO: dispatch PHSNAMEn 2CADR (RACTCADR) for group grp */ });             // CA RACTCADR ; TC SWCALL
+                new RestartsRoutine(agc).restarts(grp -> () -> Agc.stubCalled("FreshStartAndRestart restart dispatch PHSNAMEn 2CADR (RACTCADR) for group " + grp));             // CA RACTCADR ; TC SWCALL
             }
         }
         if (agc.get("MPAC+6") != 0) {

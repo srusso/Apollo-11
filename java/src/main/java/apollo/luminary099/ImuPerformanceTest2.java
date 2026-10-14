@@ -253,7 +253,8 @@ public final class ImuPerformanceTest2 {
 
     /** ALIGNCOA: wait for IMU (IMUSTALL); on error SOMERR2. */
     public void alignCoa() {
-        new ImuModeSwitchingRoutines(agc).imuStall();   // failure return (SOMERR2) is not modelled
+        new ImuModeSwitchingRoutines(agc).imuStall();
+        Agc.stubCalled("ImuPerformanceTest2.alignCoa: IMUSTALL failure return to SOMERR2 not modelled");
     }
 
     /** IMUSLLLG: coarse align then wait. */

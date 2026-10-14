@@ -252,11 +252,11 @@ public class Executive {
      * tables. TODO: untranslated - the model has no address-to-Runnable map, so this does nothing.
      */
     public void startJob(int cadr, int bbcon) {
-        // TODO: untranslated from EXECUTIVE.agc (2CADR job entry has no Java counterpart)
+        Agc.stubCalled("Executive.startJob cadr=0" + Integer.toOctalString(cadr) + " bbcon=0" + Integer.toOctalString(bbcon));
     }
 
     /** SUPDXCHZ with an (address, BBCON) pair. TODO: untranslated; the pair has no Java counterpart. */
     public void supdxchz(int cadr, int bbcon) {
-        // TODO: untranslated from INTER-BANK_COMMUNICATION.agc (DTCB with superbit switch)
+        Agc.stubCalled("Executive.supdxchz cadr=0" + Integer.toOctalString(cadr) + " bbcon=0" + Integer.toOctalString(bbcon));
     }
 }

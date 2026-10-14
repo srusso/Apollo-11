@@ -17,6 +17,11 @@ public final class Agc {
 
     private final Map<String, Integer> erasable = new HashMap<>();
 
+    /** Logs a call to a routine that is stubbed in this translation (no Java counterpart yet). */
+    public static void stubCalled(String what) {
+        System.err.println("[AGC STUB] " + what + " called");
+    }
+
     /** Reads an erasable symbol (default 0). */
     public int get(String symbol) {
         return erasable.getOrDefault(symbol, 0);
