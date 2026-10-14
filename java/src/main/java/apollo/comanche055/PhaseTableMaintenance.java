@@ -163,6 +163,33 @@ public final class PhaseTableMaintenance {
         // RELINT; DTCB back to caller
     }
 
+    /** TC PHASCHNG / OCT word / OCT extra: type B/C change with a priority or delta-time operand. */
+    public void phaschng(int word, int extra) {
+        change(word, 0, false, new int[] {extra});
+    }
+
+    /** TC 2PHSCHNG / OCT wordA / OCT wordY / OCT prio: double phase change with priority operand. */
+    public void twoPhschng(int wordA, int wordY, int prio) {
+        change(wordY, wordA, true, new int[] {prio});
+    }
+
+    /** NEWPHASE: store phase code A (one's complement) and its complement in group g (1..6). */
+    public void newphase(int group, int a) {
+        int v = Agc.fromSigned(a);
+        phase[group] = v;
+        minusPhase[group] = ~v & Agc.WORD_MASK;
+    }
+
+    /** NEWPHASE for group 5 (PHASE5 shorthand). */
+    public void phase5(int a) {
+        newphase(5, a);
+    }
+
+    /** PIPFREE lives in IMU_MODE_SWITCHING_ROUTINES; delegate. */
+    public void pipfree() {
+        new ImuModeSwitchingRoutines(agc).pipfree();
+    }
+
     /** CHECKB (type B test): bit 12 selects getting a new priority (GETPRIO) vs the old one. */
     public boolean checkB(int word) {
         return (word & BIT12) != 0;

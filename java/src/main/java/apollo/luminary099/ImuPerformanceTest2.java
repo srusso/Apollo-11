@@ -16,7 +16,7 @@ public final class ImuPerformanceTest2 {
     public static final int DEC58 = 58;
     public static final int DEC3990 = 3990;
     /** VB06N98: verb 06 noun 98. */
-    public static final int VB06N98 = 0698;
+    public static final int VB06N98 = 698;
     /** VN0641: verb 06 noun 41. */
     public static final int VN0641 = 0641;
 
@@ -31,7 +31,7 @@ public final class ImuPerformanceTest2 {
 
     /** REDO: restart into major mode 07. */
     public void redo() {
-        Executive.newModeX(agc, 07);
+        new PhaseTableMaintenance(agc).newModeX(07);
         geoImuTt();
     }
 
@@ -64,7 +64,7 @@ public final class ImuPerformanceTest2 {
         set("DSPTEM1+1", Agc.fromSigned((int) (lat * 4 * 16384)));
         set("DSPTEM1", g("AZIMUTH"));
         // CAF VN0641 ; BANKCALL GOFLASH ; TC ENDTEST1 (V34) / TC +2 (V33) / TC -5 (V32 recycle)
-        int response = Executive.goFlash(agc, VN0641);
+        int response = new PinballGameButtonsAndLights(agc).goflash(String.valueOf(VN0641));
         if (response == Executive.TERMINATE) {
             endTest1();
             return;
@@ -92,12 +92,13 @@ public final class ImuPerformanceTest2 {
     /** POSGMBL: CALCGA, coarse align the IMU, then fine align and wait for suspension to settle. */
     public void posGmbl() {
         // STCALL ZNB+2 / CALCGA ; BANKCALL IMUCOARS
-        Imu.calcGa(agc);
-        Imu.imuCoars(agc);
+        new InflightAlignmentRoutines(agc).calcga(VecOps.getV(agc, "XNB"), VecOps.getV(agc, "YNB"), VecOps.getV(agc, "ZNB"),
+                VecOps.getV(agc, "XSM"), VecOps.getV(agc, "YSM"), VecOps.getV(agc, "ZSM"));
+        new ImuModeSwitchingRoutines(agc).imuCoars();
         if ((g("FLAGWRD3") & 0x2000) != 0) { // BIT14 set: gimbal lock
             set("NDXCTR", g("NDXCTR") + 1); // +1 if in gimbal lock, otherwise 0
         }
-        Executive.downFlag(agc, "GLOKFAIL"); // reset gimbal lock flag
+        set("GLOKFAIL", 0); // reset gimbal lock flag
         imuSlLlg();
         if (g("NDXCTR") > 0) { // CCS NDXCTR : if one, PIPA test only
             pipaChk();
@@ -105,14 +106,14 @@ public final class ImuPerformanceTest2 {
         }
         finImuDd();
         // EXTEND DCA PERFDLAY ; TC LONGCALL ; 2CADR GOESTIMS : delay while suspension stabilises
-        Executive.longCall(agc, g("PERFDLAY"), this::goEstims);
-        Executive.jobSleep(agc, "ESTICADR");
+        new Waitlist(agc).longCall(g("PERFDLAY"), this::goEstims, () -> { });
+        new Executive(agc).jobSleep("ESTICADR", () -> { });
     }
 
     /** GOESTIMS: wake the sleeping job at ESTIMS (ESTICADR) and end the task. */
     public void goEstims() {
-        Executive.jobWake(agc, "ESTICADR");
-        Executive.taskOver(agc);
+        new Executive(agc).jobWake("ESTICADR");
+        new Waitlist(agc).taskOver();
     }
 
     /** TORQUE: display drift of the current position. */
@@ -135,15 +136,15 @@ public final class ImuPerformanceTest2 {
         set("DATAPL", 0);
         checkG();
         // INHINT ; CAF TWO ; TC TWIDDLE ; ADRES PIPATASK ; TC ENDOFJOB
-        Executive.twiddle(agc, 2, this::pipaTask);
-        Executive.endOfJob(agc);
+        new Waitlist(agc).twiddle(2, this::pipaTask);
+        new Executive(agc).endOfJob();
     }
 
     /** PIPATASK: timer task counting down LENGTHOT; when expired start PIPJOBB. */
     public void pipaTask() {
         set("LENGTHOT", Math.max(0, g("LENGTHOT") - 1)); // DIM
         if (Agc.toSigned(g("LENGTHOT")) > 0) {
-            Executive.twiddle(agc, 0x200 /* BIT10 */, this::pipaTask);
+            new Waitlist(agc).twiddle(0x200 /* BIT10 */, this::pipaTask);
             return;
         }
         startPip();
@@ -151,8 +152,8 @@ public final class ImuPerformanceTest2 {
 
     /** STARTPIP: FINDVAC priority 20 job PIPJOBB, then TASKOVER. */
     public void startPip() {
-        Executive.findVac(agc, 020, this::pipJobB);
-        Executive.taskOver(agc);
+        new Executive(agc).findVac(020, this::pipJobB);
+        new Waitlist(agc).taskOver();
     }
 
     /** PIPJOBB: pick up the final PIPA counts, compute drift and display via SHOW. */
@@ -163,7 +164,7 @@ public final class ImuPerformanceTest2 {
         if (Agc.toSigned(g("LENGTHOT")) <= 0) {
             // fall through to compute
         } else {
-            Executive.endOfJob(agc);
+            new Executive(agc).endOfJob();
             return;
         }
         set("RESULTCT", 5);
@@ -231,9 +232,9 @@ public final class ImuPerformanceTest2 {
 
     /** ENDTEST1: clear IMUSE flag, set mode back to "none" (NEWMODEA with -0 style ZERO) and end. */
     public void endTest1() {
-        Executive.downFlag(agc, "IMUSE");
-        Executive.newModeA(agc, 0xFFFF & Agc.WORD_MASK);
-        Executive.endExt(agc);
+        set("IMUSE", 0);
+        new PhaseTableMaintenance(agc).newModeA(0xFFFF & Agc.WORD_MASK);
+        new ExtendedVerbs(agc).endext();
     }
 
     /** OVERFFIX: adds DPPOSMAX and ONEDPP to correct for PIPA clock overflow (DP value). */
@@ -246,15 +247,13 @@ public final class ImuPerformanceTest2 {
         set("THETAD", 0);
         set("THETAD+1", 0);
         set("THETAD+2", 0);
-        Imu.imuCoars(agc);
+        new ImuModeSwitchingRoutines(agc).imuCoars();
         alignCoa();
     }
 
     /** ALIGNCOA: wait for IMU (IMUSTALL); on error SOMERR2. */
     public void alignCoa() {
-        if (!Imu.imuStall(agc)) {
-            Executive.someErr2(agc);
-        }
+        new ImuModeSwitchingRoutines(agc).imuStall();   // failure return (SOMERR2) is not modelled
     }
 
     /** IMUSLLLG: coarse align then wait. */
@@ -264,13 +263,13 @@ public final class ImuPerformanceTest2 {
 
     /** FINIMUDD: IMUFINE (fine align mode) then ALIGNCOA. */
     public void finImuDd() {
-        Imu.imuFine(agc);
+        new ImuModeSwitchingRoutines(agc).imuFine();
         alignCoa();
     }
 
     /** IMUZERR: IMUZERO (zero the IMU CDUs) then ALIGNCOA. */
     public void imuZerr() {
-        Imu.imuZero(agc);
+        new ImuModeSwitchingRoutines(agc).imuZero();
         alignCoa();
     }
 
@@ -282,7 +281,7 @@ public final class ImuPerformanceTest2 {
     public void checkG() {
         while (true) {
             if (g("NEWJOB") != 0 && Agc.toSigned(g("NEWJOB")) > 0) {
-                Executive.chang1(agc);
+                new Executive(agc).chang1();
             }
             String pipa = "PIPAX+" + g("PIPINDEX");
             int prev = Agc.fromSigned(-Agc.toSigned(g(pipa))); // CS PIPAX
@@ -338,7 +337,7 @@ public final class ImuPerformanceTest2 {
             set(ec, Agc.add(g(ec), Agc.fromSigned((int) comp))); // MXV XSM, VAD ERCOMP (matrix omitted)
         }
         set("TMARK", g("TEMPTIME"));
-        Imu.pulseImu(agc, "ERCOMP"); // AXT,1 ECADR ERCOMP ; RTB PULSEIMU
+        new ImuModeSwitchingRoutines(agc).imuPulse("ERCOMP"); // AXT,1 ECADR ERCOMP ; RTB PULSEIMU
     }
 
     /** EARTHR*: basic-language wrapper: run EARTHR interpretively, then IMUSLLLG. */
@@ -351,7 +350,7 @@ public final class ImuPerformanceTest2 {
     public void show() {
         while (true) {
             set("DSPTEM2+2", g("POSITON"));
-            int response = Executive.goFlash(agc, VB06N98);
+            int response = new PinballGameButtonsAndLights(agc).goflash(String.valueOf(VB06N98));
             if (response == Executive.TERMINATE) {
                 endTest1();
                 return;

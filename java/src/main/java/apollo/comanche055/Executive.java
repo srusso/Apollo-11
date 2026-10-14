@@ -485,7 +485,7 @@ public final class Executive {
     /** SUPDXCHZ / +1: set SUPERBNK and BBANK, then dispatch to L. */
     public void supdxchz(boolean selfCheck) {
         if (selfCheck) {
-            new SelfCheck(agc).selfchk();
+            new AgcBlockTwoSelfCheck(agc).selfchk();
         }
     }
 }

@@ -72,7 +72,7 @@ public final class IntegrationInitialization {
 
     /** STATEUP: (in INTEGRATION_ROUTINES) integrate and update permanent vectors, then ENDINT. */
     private void stateup() {
-        new IntegrationRoutines(agc).stateup();
+        new FreshStartAndRestart(agc).stateup();
     }
 
     /** ENDINT: clear STATEFLG; phase change; schedule STATEINT again in 600 s (LONGCALL). */
@@ -166,7 +166,7 @@ public final class IntegrationInitialization {
             agc.set(i == 0 ? "TDELTAV" : "TDELTAV+" + i, 0);
         }
         agc.set("PBODY", 2);
-        new IntegrationRoutines(agc).tnuv();
+        OrbitalIntegration.of(agc).tnuv();
         apchk();
     }
 
@@ -231,8 +231,8 @@ public final class IntegrationInitialization {
         for (int i = 0; i < 6; i += 2) {
             agc.set(i == 0 ? "TDELTAV" : "TDELTAV+" + i, 0);
         }
-        new IntegrationRoutines(agc).tnuv();
-        new IntegrationRoutines(agc).rectify();
+        OrbitalIntegration.of(agc).tnuv();
+        OrbitalIntegration.of(agc).rectify();
         clear("DIM0FLAG");
         set("NEWIFLG");
         set("RPQFLAG");
@@ -243,6 +243,17 @@ public final class IntegrationInitialization {
     public void integrv() {
         agc.set("IRETURN", agc.get("QPRET"));
         integrv1();
+    }
+
+    /** INTEGRV2: as INTEGRV1 but without setting RPQFLAG and NEWIFLG (restart point after RELOADSV). */
+    public void integrv2() {
+        agc.set("QPRET", 1);                          // SSP QPRET ALOADED
+        if (on("VINTFLAG")) {
+            ptoacsm();
+        } else {
+            ptoalem();
+        }
+        aloaded();
     }
 
     /** INTEGRV1: set RPQFLAG, NEWIFLG; load permanent state vector of CSM or LM; go ALOADED. */
@@ -275,8 +286,8 @@ public final class IntegrationInitialization {
     public void apchk() {
         if (on("MIDFLAG")) {
             // CALL CHKSWTCH; BPL ANDOUT; CALL ORIGCHNG (make the switch)
-            if (new IntegrationRoutines(agc).chkswtch() < 0) {
-                new IntegrationRoutines(agc).origchng();
+            if (OrbitalIntegration.of(agc).chkswtch() < 0) {
+                OrbitalIntegration.of(agc).origchng();
             }
         }
         andout();
@@ -308,7 +319,7 @@ public final class IntegrationInitialization {
 
     /** RECTOUT: rectify and place RATT, VATT, TAT, RATT1, VATT1, MU in the push list. */
     public void rectout() {
-        new IntegrationRoutines(agc).rectify();
+        OrbitalIntegration.of(agc).rectify();
         int x2 = on("MOONFLAG") ? 2 : 0;
         agc.set("X2", x2);
         agc.set("X1", Agc.fromSigned(on("MOONFLAG") ? -10 : -2));
@@ -328,8 +339,8 @@ public final class IntegrationInitialization {
     /** RVCON: conic solution for position and velocity over the interval (TET - TDEC). */
     public void rvcon() {
         agc.set("TAU.", Agc.toSigned(agc.get("TDEC")) - Agc.toSigned(agc.get("TET")));
-        new IntegrationRoutines(agc).rectify();
-        new IntegrationRoutines(agc).keppprep();
+        OrbitalIntegration.of(agc).rectify();
+        OrbitalIntegration.of(agc).kepprep();
         agc.set("TET", Agc.add(agc.get("TET"), agc.get("TC")));
         rectout();
     }
@@ -368,7 +379,7 @@ public final class IntegrationInitialization {
             return;
         }
         if (agc.get("MODREG") == 0 || on("PRECIFLG")) {
-            new IntegrationRoutines(agc).timestep();
+            OrbitalIntegration.of(agc).timestep();
             return;
         }
         // not called via CSM(LEM)PREC: check enough time exists for another step (NEWIFLG), no backward integration
@@ -380,7 +391,7 @@ public final class IntegrationInitialization {
             intexit();
             return;
         }
-        new IntegrationRoutines(agc).timestep();
+        OrbitalIntegration.of(agc).timestep();
     }
 
     private double sq(String sym) {
@@ -476,7 +487,7 @@ public final class IntegrationInitialization {
         agc.set("X2", x2);
         // RRECT = RN >> X2; RCV = RRECT; TET = PIPTIME; VRECT = VN >> X2
         agc.set("TET", agc.get("PIPTIME"));
-        new IntegrationRoutines(agc).minirect();      // finish setting up state vector
+        OrbitalIntegration.of(agc).minirect();      // finish setting up state vector
         // RTB MOVATHIS: put temporary state vector into permanent; TRKMKCNT = 0
         agc.set("TRKMKCNT", 0);
         set("CMOONFLG");
@@ -621,7 +632,7 @@ public final class IntegrationInitialization {
                 agc.set(i == 0 ? "RCV" : "RCV+" + i, agc.get(r));
                 agc.set(i == 0 ? "VCV" : "VCV+" + i, agc.get(v));
             }
-            new IntegrationRoutines(agc).rectify13d();    // store VRECT into VCV; zero TDELTAV, TNUV, TC, XKEP
+            OrbitalIntegration.of(agc).rectify13d();    // store VRECT into VCV; zero TDELTAV, TNUV, TC, XKEP
             if (Math.abs(upsv) - UPMNSVCD[0] == 0) {
                 agc.set("X2", 2);                         // INTWAKEM: lunar sphere
                 set("MOONFLAG");
@@ -659,7 +670,7 @@ public final class IntegrationInitialization {
 
     /** MINIRECT: rectification stub (implemented in INTEGRATION_ROUTINES). */
     public void minirect() {
-        new IntegrationRoutines(agc).minirect();
+        OrbitalIntegration.of(agc).minirect();
     }
 
     /** ATOPOTH: store the temporary state into the OTHER vehicle's permanent area. */

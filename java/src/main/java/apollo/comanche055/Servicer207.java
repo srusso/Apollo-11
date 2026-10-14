@@ -145,7 +145,7 @@ public final class Servicer207 {
         }
         // NOSAVPIP
         agc.set("CM/GYMDT", 5);
-        waitlist.waitlist(JTAGTIME, () -> new RcsCsmDapExecutivePrograms(agc).setjtag());
+        waitlist.waitlist(JTAGTIME, () -> new CmEntryDigitalAutopilot(agc).setjtag());
         new PhaseTableMaintenance(agc).newphase(1, -3);   // 1.3SPOT for SETJTAG
         chekaveg();
     }
@@ -276,7 +276,7 @@ public final class Servicer207 {
         if ((agc.get("FLAGWRD0") & 0100) != 0) {        // bit 7: P20 running -> restore groups 1 and 2
             ptm.twoPhschng(0111, 0132, 0);              // 1.11SPOT, 2.13SPOT
         }
-        new P40P47(agc).canv37();                       // POSTJUMP CANV37 (continue MM change R00)
+        new FreshStartAndRestart(agc).canv37();                       // POSTJUMP CANV37 (continue MM change R00)
     }
 
     /** SERVEXIT: normal exit from AVERAGE G - phase change for restart protection, then ENDOFJOB. */

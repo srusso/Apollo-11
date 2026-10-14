@@ -57,7 +57,7 @@ public class TheLunarLanding {
     }
 
     private void phaschng(int code) {
-        new PhaseTableMaintenance(agc).phaschng(code);
+        new PhaseTableMaintenance(agc).phasChng(code);
     }
 
     private int flash(int vn) {
@@ -65,7 +65,7 @@ public class TheLunarLanding {
     }
 
     private void gotopooh() {
-        new ServiceRoutines(agc).gotopooh();
+        new FreshStartAndRestart(agc).goToPooh();
     }
 
     // =====================================================================
@@ -75,7 +75,7 @@ public class TheLunarLanding {
     /** P63LM: initialise braking phase variables, flags, then compute the ignition algorithm. */
     public void p63lm() {
         phaschng(PHASE_04024);
-        new ImuModeSwitchingRoutines(agc).r02both();     // BANKCALL R02BOTH: IMU status check
+        new ImuModeSwitchingRoutines(agc).r02Both();     // BANKCALL R02BOTH: IMU status check
         agc.set("WHICH", agc.get("P63TABLE"));           // P63ADRES = GENADR P63TABLE ; initialise BURNBABY
         agc.set("DVTHRUSH", agc.get("DPSTHRSH"));        // INITIALIZE DVMON
         agc.set("DVCNTR", 4);
@@ -107,12 +107,12 @@ public class TheLunarLanding {
         double[] rls = vec("RLS");
         double tland = dp("TLAND");
         dp("TPIP", tland);                               // also set TPIP for first guidance pass
-        double[] r = new LatitudeLongitudeSubroutines(agc).rpToR(rls, tland); // MPAC non-zero: lunar
+        double[] r = new PlanetaryInertialOrientation(agc).rpToR(true, rls, tland); // MPAC non-zero: lunar
         double[] land = VecOps.mxv(VecOps.getM(agc, "REFSMMAT"), VecOps.scale(r, 16));  // VSL4 MXV
         vec("LAND", land);
-        new BurnBabyBurn(agc).guidinit();                // GUIDINIT initialises WM and /LAND/
+        new P12(agc).guidInit();                // GUIDINIT initialises WM and /LAND/
         dp("TDEC1", tland - GUIDDURN);                   // integrate state forward to that time
-        new OrbitalIntegration(agc).lemprec();
+        new IntegrationInitialization(agc).lemprec();
         agc.set("NIGNLOOP", NIGNLOOP_COUNT);             // SSP NIGNLOOP 40D
         vec("CG", new double[] {1, 0, 0});               // UNITX
         vec("CG+6", new double[] {0, 1, 0});             // UNITY
@@ -132,8 +132,9 @@ public class TheLunarLanding {
             dp("PIPTIME1", dp("TAT"));
             double[] r = VecOps.mxv(VecOps.getM(agc, "REFSMMAT"), VecOps.scale(vec("RATT1"), 16));
             vec("R", r);
-            vec("GDT/2", new BurnBabyBurn(agc).mungrav(r));
-            int n = new BurnBabyBurn(agc).guidsub();     // ?GUIDSUB -> NIGNLOOP count in A
+            new Servicer(agc).mungrav(r);                    // MUNGRAV leaves GDT1/2 in erasable
+            new LunarLandingGuidanceEquations(agc).queryGuidsub();   // ?GUIDSUB
+            int n = agc.get("NIGNLOOP");                 // NIGNLOOP count in A
             if (!ddumcalc(n)) {
                 break;
             }
@@ -168,13 +169,13 @@ public class TheLunarLanding {
             ddumgood();
             return false;
         }
-        new Interpreter(agc).intstall();                                   // CALL INTSTALL
+        new IntegrationInitialization(agc).intstall();                                   // CALL INTSTALL
         flag("INTYPFLG", true);
         flag("MOONFLAG", true);
         dp("TET", dp("PIPTIME1"));                                         // hopefully ?GUIDSUB did not clobber
         vec("RCV", vec("RATT1"));                                          //   RATT1 and VATT1
         vec("VCV", vec("VATT1"));
-        new OrbitalIntegration(agc).integrvs();
+        new IntegrationInitialization(agc).integrvs();
         return true;                                                       // GOTO IGNALOOP
     }
 
@@ -206,8 +207,8 @@ public class TheLunarLanding {
 
     /** ASTNCLOK: CS ASTNDEX ; BANKCALL STCLOK2 ; ENDOFJOB (resumes at ASTNRET in a new job). */
     public void astnclok() {
-        new ServiceRoutines(agc).stclok2(~ASTNDEX & Agc.WORD_MASK);
-        new ServiceRoutines(agc).endofjob();             // RETURN IN NEW JOB AND IN EBANK FIVE
+        new BurnBabyBurn(agc).stClok2(~ASTNDEX & Agc.WORD_MASK);
+        new Executive(agc).endOfJob();             // RETURN IN NEW JOB AND IN EBANK FIVE
     }
 
     /**
@@ -216,7 +217,7 @@ public class TheLunarLanding {
      */
     public void astnret() {
         agc.set("QMAJ", agc.get("P63SPOT2"));
-        new ServiceRoutines(agc).r51p63();               // RTB R51P63
+        new P51P53(agc).r51p63();               // RTB R51P63
         p63spot2();
     }
 
@@ -227,7 +228,7 @@ public class TheLunarLanding {
         vec("SCAXIS", new double[] {1, 0, 0});           // UNITX
         agc.set("EBANK", 7);                             // CAF EBANK7 ; TS EBANK
         // INHINT ; IBNKCALL PFLITEDB ; RELINT
-        new BurnBabyBurn(agc).pflitedb();
+        new DapInterfaceSubroutines(agc).pfliteDb();
         new R6062(agc).r60lem();                         // BANKCALL R60LEM
         phaschng(PHASE_04024);                           // prevent recalling R60
         p63spot3();
@@ -248,8 +249,8 @@ public class TheLunarLanding {
 
     /** P63SPOT4: initialise landing radar (SETPOS1) and POSTJUMP to BURNBABY. */
     public void p63spot4() {
-        new RadarLeadinRoutines(agc).setpos1();
-        new BurnBabyBurn(agc).burnbaby();
+        new Servicer(agc).setpos1();
+        new BurnBabyBurn(agc).burnBaby();
     }
 
     // =====================================================================
@@ -275,7 +276,7 @@ public class TheLunarLanding {
         flag("LUNAFLAG", true);
         new LatitudeLongitudeSubroutines(agc).latLong(dp("PIPTIME"));  // CALL LAT-LONG
         // COMPUTE RLS AND STORE IT AWAY
-        double[] rls = new LatitudeLongitudeSubroutines(agc).rToRp(
+        double[] rls = new PlanetaryInertialOrientation(agc).rToRp(true,
             VecOps.scale(vec("RN"), 4), dp("PIPTIME"));   // VSL2 ; PUSH ; CALL R-TO-RP
         vec("RLS", rls);
         while (true) {
@@ -290,7 +291,7 @@ public class TheLunarLanding {
         }
         // INITIALIZE GSAV AND (USING REFMF) YNBSAV, ZNBSAV AND ATTFLAG FOR P57
         vec("GSAV", new double[] {1, 0, 0});              // UNITX
-        new LatitudeLongitudeSubroutines(agc).refmf();    // STCALL REFMF
+        new P51P53(agc).refMf();    // STCALL REFMF
         gotopooh();                                       // ASTRONAUT: PLEASE SELECT P57
     }
 }

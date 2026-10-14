@@ -118,8 +118,13 @@ public class RtbOpCodes {
 
     /** PULSEIMU: RTB to torque gyros; ECADR of commands arrives in X1. */
     public void pulseimu() {
+        pulseimu("X1");
+    }
+
+    /** PULSEIMU with the base symbol of the six command words given explicitly. */
+    public void pulseimu(String ecadr) {
         agc.set("A", agc.get("X1"));
-        new InterBankCommunication(agc).bankcall(0, () -> new ImuModeSwitchingRoutines(agc).imupulse());
+        new InterBankCommunication(agc).bankcall(0, () -> new ImuModeSwitchingRoutines(agc).imuPulse(ecadr));
         new Interpreter(agc).danzig();
     }
 

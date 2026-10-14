@@ -27,7 +27,7 @@ public final class KalcmanuSteering {
     public void newdelhi() {
         // CS HOLDFLAG; BZMF NOGO-2: terminate if maneuver interrupted by astronaut
         if (Agc.toSigned(~agc.get("HOLDFLAG") & Agc.WORD_MASK) <= 0) {
-            new Kalcmanu(agc).nogoMinus2(); // NOGO -2 (KALCMANU_PROGRAM)
+            Anglfind.of(agc).nogom2(); // NOGO -2
             return;
         }
         newangl();
@@ -38,7 +38,7 @@ public final class KalcmanuSteering {
         // AXC,1 MIS ; AXC,2 DEL ; CALL MXM3
         interp.axc(1, "MIS");
         interp.axc(2, "DEL");
-        interp.call(() -> new Anglfind(agc).mxm3());
+        interp.call(() -> { Anglfind af = Anglfind.of(agc); af.mis = Anglfind.mxm3(af.mis, af.del); });
         // VLOAD STADR ; STOVL MIS+12D ; STADR ; STOVL MIS+6D ; STADR ; STORE MIS
         interp.vload(null);
         interp.stadr();
@@ -49,7 +49,7 @@ public final class KalcmanuSteering {
         interp.store("MIS");
         // AXC,1 MIS ; CALL DCMTOCDU : new CDU angles from the matrix
         interp.axc(1, "MIS");
-        interp.call(() -> new Anglfind(agc).dcmtocdu());
+        interp.call(() -> { Anglfind af = Anglfind.of(agc); af.cphi = af.dcmtocdu(af.mis); });
         // RTB V1STO2S ; STORE NCDU
         interp.rtb(() -> new Rt8OpCodes(agc).v1sto2s());
         interp.store("NCDU");

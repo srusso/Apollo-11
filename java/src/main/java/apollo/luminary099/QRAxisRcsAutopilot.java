@@ -141,7 +141,7 @@ public class QRAxisRcsAutopilot {
         selctsub();
         int polytemp = g("POLYTEMP");
         if (s16(polytemp) == 0) {
-            new AlarmAndAbort(agc).alarm(02002);   // no policy available because of failures
+            new AlarmAndAbort(agc).alarm(02002, 0);   // no policy available because of failures
             polytemp = g("POLYTEMP");
         }
         s("NEXTU", 00314 & polytemp);              // 00314OCT
@@ -649,7 +649,7 @@ public class QRAxisRcsAutopilot {
                 // CCS NUMBERT; try the next lower policy
                 if (num > 0) { num--; continue; }
                 s(g("AXISCTR") == 0 ? "TJU" : "TJV", 0);
-                new AlarmAndAbort(agc).alarm(02004);
+                new AlarmAndAbort(agc).alarm(02004, 0);
                 norotat();
                 return;
             }
@@ -687,7 +687,7 @@ public class QRAxisRcsAutopilot {
         s("DAPZRUPT", NEGMAX);                     // negative DAPZRUPT signals JASK is over
         s("DAPZRUPT+1", g("DAPZRUPT+1"));
         s("ZRUPT", z);
-        new DapSubroutines(agc).noqrsm();
+        new Waitlist(agc).resume();                  // NOQRSM (WAITLIST.agc): restore and RESUME
     }
 
     // ---- minimum-impulse helper kept for completeness ---------------------------------------------------------------------
@@ -702,7 +702,7 @@ public class QRAxisRcsAutopilot {
     private static final class Zatteror {
         private final Agc agc;
         Zatteror(Agc agc) { this.agc = agc; }
-        void zatteror() { new DapSubroutines(agc).zatteror(); }
+        void zatteror() { new DapInterfaceSubroutines(agc).zatteror(); }
     }
     private static final class Gts {
         private final Agc agc;
@@ -713,11 +713,11 @@ public class QRAxisRcsAutopilot {
     private static final class TjetLaw {
         private final Agc agc;
         TjetLaw(Agc agc) { this.agc = agc; }
-        void tjetlaw() { new TjetLaws(agc).tjetlaw(); }
+        void tjetlaw() { new apollo.luminary099.TjetLaw(agc).tjetlaw(); }
     }
     private static final class SpsRcs {
         private final Agc agc;
         SpsRcs(Agc agc) { this.agc = agc; }
-        void spsrcs() { new TrimGimbalControlSystem(agc).spsrcs(); }
+        void spsrcs() { new SpsBackUpRcsControl(agc).spsrcs(); }
     }
 }

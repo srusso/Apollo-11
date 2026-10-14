@@ -102,7 +102,7 @@ public final class R6062 {
 
     /** STARTMNV: perform maneuver via GOMANUR; ENDMANUV loops back to TOBALLA. */
     public void startmnv() {
-        new KalcmanuSteering(agc).gomanur();
+        new ImuModeSwitchingRoutines(agc).goManur();
         toballa();                  // ENDMANUV
     }
 
@@ -124,26 +124,26 @@ public final class R6062 {
         agc.set("MPAC+2", q);
         agc.set("TBASE2", Agc.add(agc.get("BUF2"), Agc.fromSigned(-3)));  // restart location
         // TC PHASCHNG ; OCT 00132
-        new ServiceRoutines(agc).phaschng(0132);
+        new PhaseTableMaintenance(agc).phasChng(0132);
         // CAF BIT7 ; TC LINUS : set bits for priority display
         new PinballGameButtonsAndLights(agc).linus(0100);
     }
 
     /** RELINUS: restore priority and decide how to resume after a priority display. */
     public void relinus() {
-        new ServiceRoutines(agc).priochng(agc.get("PRIO26")); // restore original priority
+        new Executive(agc).prioChng(agc.get("PRIO26")); // restore original priority
         if (flag("TRACKFLG")) {
             rer60();                // continue R60 only if TRACKFLG on
             return;
         }
         if (flag("RNDVZFLG")) {
             // P20: set 2.7 spot
-            new ServiceRoutines(agc).phaschng(040072);
+            new PhaseTableMaintenance(agc).phasChng(040072);
         } else {
             // must be P25: set 2.11 spot
-            new ServiceRoutines(agc).phaschng(040112);
+            new PhaseTableMaintenance(agc).phasChng(040112);
         }
-        new ServiceRoutines(agc).endofjob();
+        new Executive(agc).endOfJob();
     }
 
     /** RER60: set priority display flag after restart and go back to TBASE2. */
@@ -157,9 +157,9 @@ public final class R6062 {
         if (agc.get("MODREG") == 0) {
             endmanu1();
         } else if (!flag("PDSPFLAG")) {
-            new ServiceRoutines(agc).gotopooh();
+            new FreshStartAndRestart(agc).goToPooh();
         } else {
-            new ServiceRoutines(agc).gotov56();   // in R61 (P20 or P25)
+            new P20P25(agc).gotov56();   // in R61 (P20 or P25)
         }
     }
 
@@ -315,7 +315,7 @@ public final class R6062 {
         do {
             response = new PinballGameButtonsAndLights(agc).goflash(V06N22);
             if (response == 0) {
-                new ServiceRoutines(agc).endext();      // TERMINATE
+                new ExtendedVerbs(agc).endext();      // TERMINATE
                 return;
             }
         } while (response != 1);                         // ENTER: redisplay
@@ -326,6 +326,6 @@ public final class R6062 {
     public void gomove() {
         agc.set("3AXISFLG", 1);
         r60lem();
-        new ServiceRoutines(agc).endext();
+        new ExtendedVerbs(agc).endext();
     }
 }

@@ -58,7 +58,7 @@ public class UpdateProgram {
 
     private void enter(int up) {
         s("UPVERBSV", up);                              // save UPVERB until OK to enter P27
-        new PinballGameButtonsAndLights(agc).testxact(); // grab display, else operator error
+        new ExtendedVerbs(agc).testxact(); // grab display, else operator error
         if (g("MODREG") != 0 && g("MODREG") != Agc.WORD_MASK) {   // update allowed in P00 / fresh start only
             uperror();
             return;
@@ -78,9 +78,9 @@ public class UpdateProgram {
 
     /** UPPART2: update program part 2. */
     public void uppart2() {
-        new FreshStartAndRestart(agc).phaschng(PHASE_PRE_VERIFY, 030000, () -> upout1());   // restart: restore mode and downlist
+        new PhaseTableMaintenance(agc).phasChng(PHASE_PRE_VERIFY);   // restart: restore mode and downlist
         s("DNLSTCOD", 1);                               // coast + align downlist
-        new PinballGameButtonsAndLights(agc).newmodex(27);   // major mode = 27
+        new PhaseTableMaintenance(agc).newModeX(27);   // major mode = 27
         switch (g("UPVERB")) {
             case UP70:
             case UP73:
@@ -144,7 +144,8 @@ public class UpdateProgram {
     }
 
     private Reply display(int verbNoun) {
-        return new PinballGameButtonsAndLights(agc).goxdspf(verbNoun);   // flashing display via BANKCALL
+        new DisplayInterfaceRoutines(agc).goMarkF(verbNoun);   // GOXDSPF: flashing display via BANKCALL
+        return Reply.PROCEED_V33;                       // the model has no keyboard: assume PROCEED
     }
 
     /** CK4V32: check for a Verb 32 on return from GOXDSPF; true if V32 (data not new). */
@@ -160,7 +161,7 @@ public class UpdateProgram {
     /** UPSTORE: ground has verified the update; invert VERIFLAG and store the data. */
     public void upstore() {
         s("FLAGWRD7", g("FLAGWRD7") ^ g("VERIFBIT"));   // indicate V33 received (via downlink)
-        new FreshStartAndRestart(agc).phaschng(PHASE_STORE);   // redo the store if a restart occurs
+        new PhaseTableMaintenance(agc).phasChng(PHASE_STORE);   // redo the store if a restart occurs
         if (g("UPVERB") - 2 <= 0) {
             upfndvac();                                 // V70 - V72 need orbit integration lock
         } else {
@@ -172,7 +173,7 @@ public class UpdateProgram {
     public void upend73() {
         copyDp("UPBUFF", "UPBUFF+8");
         if (!timedidl()) {
-            new Alarm(agc).falton();                    // operator error
+            new PinballGameButtonsAndLights(agc).falton();                    // operator error
         }
         upout1();
     }
@@ -184,19 +185,20 @@ public class UpdateProgram {
 
     /** UPFNDVAC: FINDVAC the UPJOB at extended-verb priority. */
     public void upfndvac() {
-        new Executive(agc).findvac(g("CHRPRIO"), () -> upjob());
-        new Executive(agc).endofjob();
+        new Executive(agc).findVac(g("CHRPRIO"), () -> upjob());
+        new Executive(agc).endOfJob();
     }
 
     /** UPJOB: INTSTALL (wait if orbital integration is in progress), then UPWAKE. */
     public void upjob() {
-        new Interpreter(agc).intstall(() -> upwake());
+        new IntegrationInitialization(agc).intstall();
+        upwake();
     }
 
     /** UPWAKE: restart protect, set integration restart bit, branch on UPVERB. */
     public void upwake() {
-        new FreshStartAndRestart(agc).phaschng(PHASE_STORE);
-        new FlagwordAssignments(agc).upflag("REINTFLG");
+        new PhaseTableMaintenance(agc).phasChng(PHASE_STORE);
+        s("REINTFLG", 1);
         switch (g("UPVERB")) {
             case UP70: upend70(); break;
             case UP71: upend71(); break;
@@ -215,7 +217,8 @@ public class UpdateProgram {
         s("TIME2", 0); s("TIME2+1", 0);
         s("UPBUFF+18", Agc.fromSigned((int) (old >> 14)));
         s("UPBUFF+19", Agc.fromSigned((int) (old & 037777)));
-        new FreshStartAndRestart(agc).quickPhase6(UPDTPHAS);
+        s("-PHASE6", -UPDTPHAS);                      // QUICK PHASCHNG: DXCH -PHASE6
+        s("-PHASE6+1", UPDTPHAS);
         return timedidr();
     }
 
@@ -228,12 +231,12 @@ public class UpdateProgram {
             long oldClock = dp("UPBUFF+18");
             s("UPBUFF+18", 0); s("UPBUFF+19", 0);
             setDp("TIME2", oldClock);                   // restore old value of clock
-            new FreshStartAndRestart(agc).phaschng(PHASE_STORE);
+            new PhaseTableMaintenance(agc).phasChng(PHASE_STORE);
             return false;
         }
         new Interpreter(agc).tpagree();                 // force sign agreement
         setDp("TIME2", sum);                            // DAS TIME2
-        new FreshStartAndRestart(agc).phaschng(PHASE_STORE);
+        new PhaseTableMaintenance(agc).phasChng(PHASE_STORE);
         return true;
     }
 
@@ -307,11 +310,11 @@ public class UpdateProgram {
         }
         setDp("UPBUFF+10", -delta);                     // copy decrementers for restart protection
         setDp("UPBUFF+12", -delta);
-        new FreshStartAndRestart(agc).phaschng(PHASE_STORE);
+        new PhaseTableMaintenance(agc).phasChng(PHASE_STORE);
         setDp("TETCSM", dp("TETCSM") + dp("UPBUFF+10")); setDp("UPBUFF+10", 0);   // decrement CSM state vector time
         setDp("TETLEM", dp("TETLEM") + dp("UPBUFF+12")); setDp("UPBUFF+12", 0);   // decrement LEM state vector time
         setDp("TEPHEM+1", dp("TEPHEM+1") + delta);      // increment TP TEPHEM
-        new FreshStartAndRestart(agc).phaschng(PHASE_STORE);
+        new PhaseTableMaintenance(agc).phasChng(PHASE_STORE);
         upout();
     }
 
@@ -319,31 +322,31 @@ public class UpdateProgram {
 
     /** UPOUT: normal finish of P27; release orbital integration and restore the prior mode. */
     public void upout() {
-        new Interpreter(agc).intwakeu();
+        new IntegrationInitialization(agc).intwakeu();
         upout1();
     }
 
     /** UPOUT +1: restore prior mode, clear downlist, turn off activity light, kill group 6. */
     public void upout1() {
-        new PinballGameButtonsAndLights(agc).newmodex3(g("UPOLDMOD"));
+        new PhaseTableMaintenance(agc).newModeX(g("UPOLDMOD"));
         s("DNLSTCOD", 0);
         upactoff();
         s("-PHASE6", Agc.WORD_MASK);                    // kill group 6 (NEG0)
         s("-PHASE6+1", Agc.WORD_MASK);
-        new ServiceRoutines(agc).endext();              // extended verb exit
+        new ExtendedVerbs(agc).endext();              // extended verb exit
     }
 
     /** UPERROUT: turn on 'OPERATOR ERROR' light and go to the common exit. */
     public void uperrout() {
-        new Alarm(agc).falton();
+        new PinballGameButtonsAndLights(agc).falton();
         upout();
     }
 
     /** UPERROUT +2: error exit that does not reset any restart groups. */
     public void uperrout2() {
-        new Alarm(agc).falton();
+        new PinballGameButtonsAndLights(agc).falton();
         upactoff();
-        new ServiceRoutines(agc).endext();
+        new ExtendedVerbs(agc).endext();
     }
 
     /** UPACTOFF: turn off the uplink activity light (bit 3 of channel 11). */

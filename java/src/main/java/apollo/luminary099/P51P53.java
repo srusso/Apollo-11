@@ -1312,4 +1312,11 @@ public class P51P53 {
         sv("ZSMD", z);
         sv("YSMD", unit(cross(z, v("XSMD"))));
     }
+
+    /** R51P63: R51 as used by P63 - request fine align (V50N25 checklist 14), then R51C; returns to QMAJ. */
+    public void r51p63() {
+        int r = extern("GOPERF1", 014);
+        if (r == TERMINATE) { extern("GOTOPOOH"); return; }
+        r51c();
+    }
 }

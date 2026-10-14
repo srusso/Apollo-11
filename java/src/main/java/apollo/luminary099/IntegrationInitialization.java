@@ -100,7 +100,7 @@ public class IntegrationInitialization {
         }
 
         void phaschng(int code) {
-            new PhaseTableMaintenance(agc).phaschng(code);
+            new PhaseTableMaintenance(agc).phasChng(code);
         }
     }
 
@@ -109,7 +109,7 @@ public class IntegrationInitialization {
     /** STATEINT: periodic (every 600 s) state vector integration task started under the Waitlist. */
     public void stateint() {
         ic().phaschng(052);
-        new Executive(agc).findvac(PRIO5, this::statint1);   // CAF PRIO5; TC FINDVAC; 2CADR STATINT1
+        new Executive(agc).findVac(PRIO5, this::statint1);   // CAF PRIO5; TC FINDVAC; 2CADR STATINT1
         // TC TASKOVER
     }
 
@@ -125,14 +125,14 @@ public class IntegrationInitialization {
         intstall();
         set("NODOFLAG");
         setiflgs();
-        new OrbitalIntegration(agc).stateup();   // GOTO STATEUP
+        new FreshStartAndRestart(agc).stateUp();   // GOTO STATEUP
     }
 
     /** ENDINT: end of the STATEINT job; reschedules itself 600 seconds later. */
     public void endint() {
         clear("STATEFLG");
         ic().phaschng(020032);
-        new Waitlist(agc).longcall(SECS600, this::stateint); // DCA 600SECS; TC LONGCALL; 2CADR STATEINT
+        new Waitlist(agc).longCall(SECS600, this::stateint, () -> { }); // DCA 600SECS; TC LONGCALL; 2CADR STATEINT
         // TC ENDOFJOB
     }
 
@@ -244,7 +244,7 @@ public class IntegrationInitialization {
         long t = dpRaw("TDEC1");
         setDpRaw("TET", t);                           // PDDL TDEC1; STODL TET
         double[] rls = VecOps.getV(agc, "RLS");       // VLOAD RLS (pushed at 0)
-        double[] r = new PlanetaryInertialOrientation(agc).rpToR(rls, t, 5.0 / 8.0); // 5/8 scale, CALL RP-TO-R
+        double[] r = new PlanetaryInertialOrientation(agc).rpToR(true, rls, t); // 5/8 scale, CALL RP-TO-R
         VecOps.setV(agc, "RCV", r);                   // STOVL RCV
         // ZUNIT stored at 0D, TET at 6D (push-down list for the second RP-TO-R call)
         set("MOONFLAG");                              // NEEDED FOR SETTING X1 ON EXIT
@@ -319,7 +319,7 @@ public class IntegrationInitialization {
         }
         VecOps.setV(agc, "TDELTAV", new double[] {0, 0, 0});     // VLOAD ZEROVEC; STORE TDELTAV
         agc.set("TNUV", 0);
-        new ConicSubroutines(agc).rectify();                      // STCALL TNUV; RECTIFY
+        new OrbitalIntegration(agc).rectify();                      // STCALL TNUV; RECTIFY
         clear("DIM0FLAG");
         set("NEWIFLG");
         set("RPQFLAG");
@@ -390,7 +390,7 @@ public class IntegrationInitialization {
      * entry, -10D earth or -2 moon) and finishes through INTEXIT.
      */
     public void rectout() {
-        new ConicSubroutines(agc).rectify();
+        new OrbitalIntegration(agc).rectify();
         int shift = agc.get("X2");                 // VSL* 0,2: scale between earth and moon
         double[] r = VecOps.getV(agc, "RRECT");
         double[] v = VecOps.getV(agc, "VRECT");
@@ -424,9 +424,9 @@ public class IntegrationInitialization {
     /** RVCON: conic solution over the interval (TET - TDEC): set TAU. and call KEPPREP. */
     public void rvcon() {
         setDpRaw("TAU.", dpRaw("TDEC") - dpRaw("TET"));
-        ConicSubroutines cs = new ConicSubroutines(agc);
-        cs.rectify();
-        cs.kepprep();
+        OrbitalIntegration oi = new OrbitalIntegration(agc);
+        oi.rectify();
+        oi.keppPrep();
         setDpRaw("TET", dpRaw("TC") + dpRaw("TET"));
         rectout();
     }
@@ -487,12 +487,12 @@ public class IntegrationInitialization {
             return;
         }
         if (agc.get("MODREG") == 0 || flag("PRECIFLG")) {            // SLOAD MODREG; BHIZ; PRECIFLG
-            new OrbitalIntegration(agc).timestep();
+            new OrbitalIntegration(agc).timeStep();
             return;
         }
         if (Math.abs(half) - 12.0 < 0 && flag("NEWIFLG")) {
             clear("NEWIFLG");                                         // BOFCLR NEWIFLG TIMESTEP
-            new OrbitalIntegration(agc).timestep();
+            new OrbitalIntegration(agc).timeStep();
             return;
         }
         long remaining = dpRaw("TDEC") - dpRaw("TET");
@@ -502,7 +502,7 @@ public class IntegrationInitialization {
         }
         // IS 4(DT) LS (TDEC - TET): if not, exit; otherwise take the timestep
         if (4 * Math.abs(half) * (1L << 28) / 256.0 < remaining) {
-            new OrbitalIntegration(agc).timestep();
+            new OrbitalIntegration(agc).timeStep();
         } else {
             intexit();
         }
@@ -516,7 +516,7 @@ public class IntegrationInitialization {
      */
     public void intstall() {
         while ((agc.get("RASFLAG") & INTBITAB) != 0) {
-            new Executive(agc).jobsleep(this::intstall);   // CAF WAKESTAL; TC JOBSLEEP
+            new Executive(agc).jobSleep("WAKESTAL", this::intstall);   // CAF WAKESTAL; TC JOBSLEEP
             return;
         }
         // OKTOGRAB
@@ -550,7 +550,7 @@ public class IntegrationInitialization {
 
     /** INTWAKE1: wake all jobs sleeping on WAKESTAL and release the stall area. */
     public void intwake1() {
-        new Executive(agc).jobwake(this::intstall);          // CAF WAKESTAL; TC JOBWAKE (repeat while woken)
+        new Executive(agc).jobWake("WAKESTAL");          // CAF WAKESTAL; TC JOBWAKE (repeat while woken)
         agc.set("RASFLAG", agc.get("RASFLAG") & ~INTBITAB & Agc.WORD_MASK);  // RELEASE STALL AREA
         // RELINT; GOBAC
     }
@@ -586,8 +586,8 @@ public class IntegrationInitialization {
         VecOps.setV(agc, "RCV", scalePow2(rn, -x2));
         setDpRaw("TET", dpRaw("PIPTIME"));
         VecOps.setV(agc, "VCV", scalePow2(vn, -x2));
-        new ConicSubroutines(agc).minirect();       // FINISH SETTING UP STATE VECTOR
-        new OrbitalIntegration(agc).movathis();     // PUT TEMP STATE VECTOR INTO PERMANENT
+        new OrbitalIntegration(agc).miniRect();       // FINISH SETTING UP STATE VECTOR
+        movealem();     // PUT TEMP STATE VECTOR INTO PERMANENT
         agc.set("TRKMKCNT", 0);
         new MeasurementIncorporation(agc).fazab5(); // GOTO FAZAB5
     }
@@ -710,7 +710,7 @@ public class IntegrationInitialization {
         if (up != 0) {
             VecOps.setV(agc, "RCV", VecOps.getV(agc, "RRECT"));
             VecOps.setV(agc, "VCV", VecOps.getV(agc, "VRECT"));
-            new ConicSubroutines(agc).rectify13();             // RECTIFY +13D
+            new OrbitalIntegration(agc).miniRect();             // RECTIFY +13D
             if (Math.abs(up) - UPMNSVCD == 0) {
                 agc.set("X2", 2);                              // LUNAR SPHERE OF INFLUENCE
                 set("MOONFLAG");

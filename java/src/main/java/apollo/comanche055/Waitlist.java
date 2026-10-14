@@ -171,7 +171,7 @@ public class Waitlist {
 
     private void enableNbdonly() {
         // CAF PRIO35 ; TC NOVAC ; 2CADR NBDONLY
-        new Executive(agc).novac(035, () -> new Nbdonly(agc).nbdonly());
+        new Executive(agc).novac(035, () -> new ImuCompensationPackage(agc).nbdonly());
         taskover();
     }
 

@@ -225,7 +225,7 @@ public class RcsCsmDigitalAutopilot {
     }
 
     /** NEEDLER: drive FDAI needles via IMU error counters unless in coarse align. */
-    private void needler() {
+    public void needler() {
         if (bit(g("CHAN12"), 4)) { // coarse align enabled: do not use the IMU error counters
             s("RCSFLAGS", g("RCSFLAGS") | 0x4);
             return;

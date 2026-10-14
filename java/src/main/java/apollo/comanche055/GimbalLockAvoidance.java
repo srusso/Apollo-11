@@ -48,4 +48,10 @@ public class GimbalLockAvoidance {
         // SETGO CALCMAN2 / NEWANGL +1: state switch CALCMAN2 (43D): off = bypass starting procedure,
         // on = start maneuver.
     }
+
+    /** LOCSKIRT EQUALS WCALC: rate index is taken from RATEINDX (0,2,4,6 = DP word offsets). */
+    public void locskirt(double[] cof, double am) {
+        int idx = Math.max(0, Math.min(3, agc.get("RATEINDX") >> 1));
+        wcalc(cof, am, idx, null);
+    }
 }

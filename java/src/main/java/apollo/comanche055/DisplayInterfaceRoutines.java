@@ -310,9 +310,10 @@ public final class DisplayInterfaceRoutines {
     }
 
     /** GOFLASH: leave only flash bit set. */
-    public void goflash(int a) {
+    public int goflash(int a) {
         st("PLAYTEM1", a);
         goflash2(BIT4);
+        return reply;
     }
 
     /** GOFLASH2: PLAYTEM4 = flag word; SAVELOCS; RELINT; branch directly to MAKEPLAY. */
@@ -819,7 +820,12 @@ public final class DisplayInterfaceRoutines {
         // TC ENDIDLE: control returns to IDLERET1, +1 on PROCEED, +2 on ENTER (or load)
     }
 
+    /** Outcome of the last flashing display: TERMINATE (+0), PROCEED (+1), ENTER/RECYCLE (+2). */
+    public static final int TERMINATE = 0, PROCEED = 1, RECYCLE = 2;
+    private int reply = PROCEED;
+
     public void idleret1(int outcome) {
+        reply = outcome;
         if (outcome == 0) {
             termate();
         } else if (outcome == 1) {
@@ -990,8 +996,9 @@ public final class DisplayInterfaceRoutines {
         gomarkr(a);
     }
 
-    public void goxdspf(int a) {
+    public int goxdspf(int a) {
         gomarkf(a);
+        return reply;
     }
 
     public void goxdspfr(int a) {

@@ -638,7 +638,7 @@ public final class P32P35P72P75 {
         timeSet("INTT1", t1);
         timeSet("INTT2", t2);
         VecOps.setDp(agc, "INTOPT", option / TWOPI);
-        new OrbitalIntegration(agc).intint();
+        new P3435P7475(agc).intInt(r, v, t1, t2, option, 0);   // INTINT
     }
 
     // ================= S32/33.1 and S32/33.X =================
@@ -722,11 +722,11 @@ public final class P32P35P72P75 {
     // ================= glue to neighbouring routines =================
 
     private void selectmu() {
-        new OrbitalIntegration(agc).selectmu();
+        new P3435P7475(agc).selectmu();
     }
 
     private void precset() {
-        new IntegrationInitialization(agc).precset();
+        new P3435P7475(agc).precset();
     }
 
     private void passive() {
@@ -738,7 +738,7 @@ public final class P32P35P72P75 {
     }
 
     private double s3334_1() {
-        return new P3435P7475(agc).s3334_1();
+        return new P3435P7475(agc).s3334p1();
     }
 
     private void vn1645() {

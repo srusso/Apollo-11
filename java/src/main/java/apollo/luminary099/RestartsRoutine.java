@@ -57,7 +57,7 @@ public class RestartsRoutine {
             return;
         }
         // X.1 restart: start the display restart job
-        new Executive(agc).findvac(agc.get("PRIO14"), () -> new PinballGameButtonsAndLights(agc).initdsp());
+        new Executive(agc).findVac(agc.get("PRIO14"), () -> new DisplayInterfaceRoutines(agc).initDsp());
         rtrncadr();
     }
 
@@ -158,7 +158,7 @@ public class RestartsRoutine {
             exit.run();
         };
         if (p > 0) {
-            ex.findvac(p, job);
+            ex.findVac(p, job);
         } else {
             ex.novac(-p, job);
         }
@@ -216,7 +216,8 @@ public class RestartsRoutine {
     /** LONGCLCL: go to LONGCALL with the remaining time in A,L. */
     public void longclcl() {
         agc.set("GOLOC-1", agc.get("LGCLCADR"));
-        new Waitlist(agc).longcall(agc.get("LONGTIME"), agc.get("LONGTIME+1"), () -> exit.run());
+        new Waitlist(agc).longCall(((long) agc.get("LONGTIME") << 14) | agc.get("LONGTIME+1"),
+                () -> new Executive(agc).startJob(agc.get("GOLOC-1"), agc.get("GOLOC")), () -> exit.run());
     }
 
     /** ITSLNGCL: a longcall; DT address is negative in PHSPRDT. */

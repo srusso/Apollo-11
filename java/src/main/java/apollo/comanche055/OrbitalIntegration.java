@@ -45,6 +45,13 @@ public final class OrbitalIntegration {
     static final double RDM = 16093.44e3;       // moon oblateness cutoff
     static final double RDE = 80467.20e3;       // earth oblateness cutoff
 
+    private static final java.util.Map<Agc, OrbitalIntegration> INSTANCES = new java.util.WeakHashMap<>();
+
+    /** Shared per-AGC instance, so the Java-held integration state (RCV, VCV, TC, ...) is common to all callers. */
+    public static synchronized OrbitalIntegration of(Agc agc) {
+        return INSTANCES.computeIfAbsent(agc, OrbitalIntegration::new);
+    }
+
     private final Agc agc;
     private final PlanetaryInertialOrientation orient;
 
@@ -109,7 +116,19 @@ public final class OrbitalIntegration {
         // STQ KEPRTN ; AXC,1 10 (Earth) or 2 (Moon, MOONFLAG set) ; GOTO KEPLERN
         agc.set("KEPRTN", 0);
         agc.set("KEPLERN_N", flag("MOONFLAG") ? 2 : 10);
-        new Kepler(agc).keplern();
+        ConicSubroutines conic = new ConicSubroutines(agc);   // KEPLERN
+        conic.setBody(flag("MOONFLAG") ? 1 : 0);
+        conic.rrect = rrect.clone();
+        conic.vrect = vrect.clone();
+        conic.tau = tau;
+        conic.xkepnew = xkepnew;
+        conic.tc = tc;
+        conic.xprev = xkep;
+        conic.kepler();
+        rcv = conic.rcv;
+        vcv = conic.vcv;
+        tc = conic.tc;
+        xkep = conic.xprev;
     }
 
     /** FBR3: advance TAU by DT and TET, then prepare Kepler solution (final stage). */
@@ -320,7 +339,7 @@ public final class OrbitalIntegration {
      * CHKSWTCH: returns |R| - RSPHERE-like distance sign: negative means switch origin.
      * Gets the Moon's position (LUNPOS) if RPQFLAG not set.
      */
-    private double chkswtch() {
+    public double chkswtch() {
         if (!flag("RPQFLAG")) {
             double[] pos = lunpos(tet);           // GET MOON POSITION
             rpqv = flag("MOONFLAG") ? sc(pos, -1) : pos;
@@ -357,6 +376,17 @@ public final class OrbitalIntegration {
         rcv = rrect.clone();
         vrect = add(tnuv, vcv);
         minirect();
+    }
+
+    /** RECTIFY13D: store VRECT into VCV; zero TDELTAV, TNUV, TC and XKEP. */
+    public void rectify13d() {
+        minirect();
+    }
+
+    /** Zero the temporary position and velocity deviations (TDELTAV, TNUV). */
+    public void tnuv() {
+        tdeltav = new double[3];
+        tnuv = new double[3];
     }
 
     /** MINIRECT: store new conic velocity, zero deviation, TC and XKEP. */
@@ -522,7 +552,11 @@ public final class OrbitalIntegration {
 
     // ================= neighbour stubs (names per convention) =================
 
-    private double[][] lspos(double t) { return new LunarAndSolarEphemeridesSubroutines(agc).lspos(t); }
+    /** LSPOS: {Moon, Sun} positions. */
+    private double[][] lspos(double t) {
+        LunarAndSolarEphemeridesSubroutines.Result r = new LunarAndSolarEphemeridesSubroutines(agc).lspos(t);
+        return new double[][] {r.moon, r.sun};
+    }
     private double[] lunpos(double t) { return new LunarAndSolarEphemeridesSubroutines(agc).lunpos(t); }
     private double[] lunvel(double t) { return new LunarAndSolarEphemeridesSubroutines(agc).lunvel(t); }
     private void clrmoon() { new IntegrationInitialization(agc).clrmoon(); }

@@ -34,35 +34,35 @@ public class InterruptLeadIns {
     private void enter() { /* INHINT; DXCH ARUPT */ }
 
     /** Location 4000: GO (restart) -- INHINT; BBANK = GOBB; TCF GOPROG. */
-    public void go() { new Goprog(agc).goprog(); }
+    public void go() { new FreshStartAndRestart(agc).goProg(); }
 
     /** T6RUPT: DXCH ARUPT; DCA T6ADR; DTCB. */
-    public void t6rupt() { enter(); new Dot6rupt(agc).dot6rupt(); }
+    public void t6rupt() { enter(); new T6RuptPrograms(agc).doT6Rupt(); }
 
     /** T5RUPT (autopilot): DXCH ARUPT; DCA T5ADR; DTCB. */
-    public void t5rupt() { enter(); new T5rupt(agc).t5rupt(); }
+    public void t5rupt() { enter(); new DapidlerProgram(agc).dapidler(); }
 
     /** T3RUPT. */
-    public void t3rupt() { enter(); new T3rupt(agc).t3rupt(); }
+    public void t3rupt() { enter(); new Waitlist(agc).t3Rupt(); }
 
     /** T4RUPT. */
-    public void t4rupt() { enter(); new T4rupt(agc).t4rupt(); }
+    public void t4rupt() { enter(); new T4ruptProgram(agc).t4rupt(); }
 
     /** KEYRUPT1 (DSKY keyboard). */
-    public void keyrupt1() { enter(); new Keyrupt(agc).keyrupt1(); }
+    public void keyrupt1() { enter(); new KeyruptUprupt(agc).keyrupt1(); }
 
     /** KEYRUPT2 = MARKRUPT. */
-    public void markrupt() { enter(); new Markrupt(agc).markrupt(); }
+    public void markrupt() { enter(); new AotMark(agc).markRupt(); }
 
     /** UPRUPT (uplink). */
-    public void uprupt() { enter(); new Uprupt(agc).uprupt(); }
+    public void uprupt() { enter(); new KeyruptUprupt(agc).uprupt(); }
 
     /** DOWNRUPT. */
-    public void downrupt() { enter(); new Dodowntm(agc).dodowntm(); }
+    public void downrupt() { enter(); new DownTelemetryProgram(agc).dodowntm(); }
 
     /** RADAR RUPT. */
-    public void radarRupt() { enter(); new Radaread(agc).radaread(); }
+    public void radarRupt() { enter(); new P20P25(agc).radaread(); }
 
     /** RUPT10, used only by landing guidance (PITFALL). */
-    public void rupt10() { enter(); new Pitfall(agc).pitfall(); }
+    public void rupt10() { enter(); new LunarLandingGuidanceEquations(agc).pitfall(); }
 }

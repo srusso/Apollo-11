@@ -602,6 +602,6 @@ public class ImuModeSwitchingRoutines {
     private static final class SetIssw { /* delegates to T4rupt SETISSW */
         private final Agc agc;
         SetIssw(Agc agc) { this.agc = agc; }
-        void setIssw() { new T4RuptProgram(agc).setIssw(); }
+        void setIssw() { new T4ruptProgram(agc).setIssW(); }
     }
 }

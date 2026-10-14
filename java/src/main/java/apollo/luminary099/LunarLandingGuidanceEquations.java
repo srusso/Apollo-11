@@ -930,7 +930,9 @@ public class LunarLandingGuidanceEquations {
 
     /** CDU*NBSM: transforms a vector from navigation base to stable member axes (external, not part of this file). */
     private double[] cduNbsm(double[] v) {
-        return new PoweredFlightSubroutines(agc).cduNbsm(v);
+        VecOps.setV(agc, "MPAC", v);
+        new PoweredFlightSubroutines(agc).cduNbsm();
+        return VecOps.getV(agc, "MPAC");
     }
 
     /** VHORCOMP: VHORIZ = |V - HDOTDISP UNIT(R)| (with DELVS term); display V06N60 avoiding PHASCHNG. */

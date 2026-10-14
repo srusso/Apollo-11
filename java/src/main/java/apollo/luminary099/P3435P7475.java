@@ -100,7 +100,7 @@ public class P3435P7475 {
     }
 
     private void gotopooh() {
-        new ServiceRoutines(agc).gotopooh();
+        new FreshStartAndRestart(agc).goToPooh();
     }
 
     /** Exception-free "return to caller" marker for GOTOPOOH exits in non-void callers. */
@@ -112,13 +112,13 @@ public class P3435P7475 {
 
     /** P34: this vehicle is the active vehicle. */
     public void p34() {
-        new Rendezvous(agc).avflaga();
+        new P32P35P72P75(agc).avflaga();
         p34p74a();
     }
 
     /** P74: other vehicle is the active vehicle. */
     public void p74() {
-        new Rendezvous(agc).avflagp();
+        new P32P35P72P75(agc).avflagp();
         p34p74a();
     }
 
@@ -129,7 +129,7 @@ public class P3435P7475 {
     public void p34p74a() {
         while (true) {
             terminated = false;
-            new Rendezvous(agc).p20flgon();       // SET UPDATFLG, TRACKFLG
+            new P32P35P72P75(agc).p20flgon();       // SET UPDATFLG, TRACKFLG
             vnPooh(V06N37);                       // TTPI
             if (terminated) {
                 return;
@@ -239,19 +239,19 @@ public class P3435P7475 {
     // =====================================================================
     /** ATIGINC / PTIGINC: DP increments (centiseconds) to the mid-course TIG. */
     public void p35() {
-        new Rendezvous(agc).avflaga();
+        new P32P35P72P75(agc).avflaga();
         dp("KT", dp("ATIGINC"));
         p35p75a();
     }
 
     public void p75() {
-        new Rendezvous(agc).avflagp();
+        new P32P35P72P75(agc).avflagp();
         dp("KT", dp("PTIGINC"));
         p35p75a();
     }
 
     private void p35p75a() {
-        new Rendezvous(agc).p20flgon();           // SET UPDATFLG, TRACKFLG
+        new P32P35P72P75(agc).p20flgon();           // SET UPDATFLG, TRACKFLG
         selectmu();
         terminated = false;
         while (!terminated) {
@@ -407,6 +407,13 @@ public class P3435P7475 {
         // CONIC when NN == 0 (push DPPOSMAX/ZEROVECS), otherwise PRECISION with NN offsets
         double precision = Agc.toSigned(agc.get("NN")) == 0 ? 0 : 1;
         double[] rtarg = intInt(rp3, vp3, intime, tpass4, TWOPI, precision);   // S3435.23
+        s343525(rtarg);
+    }
+
+    /** S3435.25: continuation of S34/35.2 after INTINT - store RTARG/VPASS4, then ACTCENT, DELLT4, DELVLVC. */
+    public void s343525(double[] rtarg) {
+        double intime = dp("INTIME");
+        double tpass4 = dp("TPASS4");
         vec("RTARG", rtarg);
         vec("VPASS4", vec("VATT"));
         // PHI = PI + (ACOS(UNIT RA . UNIT RP) - PI) SIGN(RA*RP . U)
@@ -529,7 +536,7 @@ public class P3435P7475 {
      */
     public double[] intInt(double[] r, double[] v, double t0, double t1, double dtOrTwopi,
             double precision) {
-        new OrbitalIntegration(agc).intstall();
+        new IntegrationInitialization(agc).intstall();
         flag("INTYPFLG", false);
         if (precision != 0) {
             flag("INTYPFLG", true);
@@ -543,7 +550,7 @@ public class P3435P7475 {
         dp("TET", t0);
         vec("RCV", shift(r, -x2));
         vec("VCV", shift(v, -x2));
-        new OrbitalIntegration(agc).integrvs();
+        new IntegrationInitialization(agc).integrvs();
         return vec("RATT");
     }
 
@@ -570,16 +577,16 @@ public class P3435P7475 {
             getMga(vec("DELVSIN"));
         }
         // GET45
-        new Rendezvous(agc).comptgo();                    // initiate task to update TTOGO
+        new P32P35P72P75(agc).comptgo();                    // initiate task to update TTOGO
         agc.set("QSAVED", agc.get("SUBEXIT"));
-        new Executive(agc).delayjob(100);                 // CAF 1SEC ; DELAYJOB
+        new ServiceRoutines(agc).delayJob(100, 0);                 // CAF 1SEC ; DELAYJOB
         int r = flash(V16N45);
         if (r == 1) {                                     // N45PROC
             if (flag("FINALFLG")) {
                 killClock();                              // FINALFLG set -> FLASH V37
                 return;
             }
-            new PhaseTableMaintenance(agc).phaschng(04024);
+            new PhaseTableMaintenance(agc).phasChng(04024);
             flag("FINALFLG", true);
         } else if (r == 0) {
             killClock();
@@ -587,7 +594,7 @@ public class P3435P7475 {
         }
         // CLUPDATE (recycle falls through here too)
         agc.set("DISPDEX", 0);
-        new PhaseTableMaintenance(agc).phaschng(04024);
+        new PhaseTableMaintenance(agc).phasChng(04024);
         flag("UPDATFLG", false);
         // GOTO QSAVED
     }
@@ -693,7 +700,7 @@ public class P3435P7475 {
             vec("R1VEC", r1);
             vec("R2VEC", r2);
             dp("TDESIRED", tdesired);
-            new GeneralLambertAimpointGuidance(agc).lambert();
+            new ConicSubroutines(agc).lambert();
             flag("GUESSW", false);
             viprime = vec("VVEC");
             vec("VIPRIME", viprime);
@@ -701,7 +708,7 @@ public class P3435P7475 {
                 break;                                    // INITVEL7
             }
             // set up inputs for ENCKE integration
-            new OrbitalIntegration(agc).intstall();
+            new IntegrationInitialization(agc).intstall();
             flag("MOONFLAG", x2 != 0 ? true : false);
             vec("R1VEC", rinit);
             vec("RCV", rinit);
@@ -709,7 +716,7 @@ public class P3435P7475 {
             dp("TET", dp("INTIME"));
             flag("INTYPFLG", false);
             dp("TDEC1", dp("INTIME") + dp("DELLT4"));
-            new OrbitalIntegration(agc).integrvs();
+            new IntegrationInitialization(agc).integrvs();
             vtarget = vec("VATT1");
             itctr++;
             vtargtag -= 1;
@@ -817,9 +824,12 @@ public class P3435P7475 {
     public double[] periapo() {
         double xxxalt = setrad();
         dp("XXXALT", xxxalt);
-        double[] a = new Conic(agc).apsides();           // apo radius, peri radius (+ECC)
-        double apoR = a[0];
-        double periR = a[1];
+        ConicSubroutines cs = new ConicSubroutines(agc);
+        cs.rvec = vec("RVEC");
+        cs.vvec = vec("VVEC");
+        cs.apsides();                                    // apo radius, peri radius (+ECC)
+        double apoR = cs.apoapse;
+        double periR = cs.periapse;
         return new double[] {apoR, apoR - xxxalt, periR, periR - xxxalt};
     }
 
@@ -836,10 +846,10 @@ public class P3435P7475 {
     public void precset() {
         double t = dp("TDEC1");
         dp("TDEC2", t);
-        new OrbitalIntegration(agc).lemprec();
+        new IntegrationInitialization(agc).lemprec();
         lemstore();
         dp("TDEC1", dp("TDEC2"));
-        new OrbitalIntegration(agc).csmprec();
+        new IntegrationInitialization(agc).csmprec();
         csmstore();
     }
 
@@ -886,7 +896,7 @@ public class P3435P7475 {
 
     /** TIMETHET: time from Kepler propagation by CENTANG (external). */
     private void timethet() {
-        new Conic(agc).timethet();
+        new ConicSubroutines(agc).timethet();
     }
 
     private double loadTime() {
@@ -908,7 +918,7 @@ public class P3435P7475 {
         while (true) {
             int r = new PinballGameButtonsAndLights(agc).gomarkf(String.valueOf(V06N16N));
             if (r == 0) {
-                new ServiceRoutines(agc).endext();        // TERMINATE
+                new ExtendedVerbs(agc).endext();        // TERMINATE
                 return;
             }
             if (r == 2) {
@@ -930,14 +940,14 @@ public class P3435P7475 {
     private void r36int(double time) {
         while (true) {
             dp("TDEC1", time);
-            new OrbitalIntegration(agc).othprec();
+            new IntegrationInitialization(agc).csmprec()      /* OTHPREC = CSMPREC */;
             double[] vp = vec("VATT");
             double[] rp = vec("RATT");
             vec("RPASS36", rp);
             double[] unp = VecOps.unit(VecOps.cross(rp, vp));
             vec("UNP36", unp);                            // U (normal of passive plane)
             dp("TDEC1", dp("TAT"));
-            new OrbitalIntegration(agc).thisprec();
+            new IntegrationInitialization(agc).lemprec()      /* THISPREC = LEMPREC */;
             double[] va = vec("VATT");
             double[] ra = vec("RATT");
             double tat = dp("TAT");                       // saved in 30D for redisplay
@@ -954,14 +964,14 @@ public class P3435P7475 {
                 psi = DPPOSMAX - psi;
             }
             dp("RTHETA", psi);
-            new SinglePrecisionSubroutines(agc).sgnagree();   // RTB SGNAGREE on TAT for display
+            new RtbOpCodes(agc).sgnagree();   // RTB SGNAGREE on TAT for display
             dp("DSPTEMX", tat);
             int r = new PinballGameButtonsAndLights(agc).gomarkf(String.valueOf(V06N90N));
             if (r == 2) {
                 time = tat;                               // REDISPLAY OUTPUT (R36 +3)
                 continue;
             }
-            new ServiceRoutines(agc).endext();            // TERMINATE or PROCEED: end of program
+            new ExtendedVerbs(agc).endext();            // TERMINATE or PROCEED: end of program
             return;
         }
     }

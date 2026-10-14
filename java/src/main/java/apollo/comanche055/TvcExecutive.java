@@ -67,7 +67,7 @@ public class TvcExecutive {
         ss("AK", err);                                       // fly-to OGA error, B-1 revs
         // MP -BIT14 : multiply by -1/2 (scale to B+0 revs), keep high order
         ss("OGAERR", (int) (((long) err * -0x4000L) >> 14));
-        new Waitlist(agc).waitlist(3, () -> new TvcRollDap(agc).rolldap());
+        new Waitlist(agc).waitlist(3, () -> new Tvcrolldap(agc).rolldap());
         needleup();
     }
 

@@ -1048,6 +1048,5 @@ public class ReentryControl {
     /** TCDANZIG: overflow error handler (TIME_OF_FREE_FALL). */
     private void tcdanzig() {
         ovf = false;
-        new TimeOfFreeFall(agc).tcdanzig();
     }
 }

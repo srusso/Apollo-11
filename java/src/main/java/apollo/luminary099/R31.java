@@ -203,9 +203,9 @@ public class R31 {
     private static final class Integration {
         private final Agc agc;
         Integration(Agc agc) { this.agc = agc; }
-        void lemPrec() { new OrbitalIntegration(agc).lemPrec(); }
-        void csmPrec() { new OrbitalIntegration(agc).csmPrec(); }
-        void intStall() { new OrbitalIntegration(agc).intStall(); }
-        void integrvs() { new OrbitalIntegration(agc).integrvs(); }
+        void lemPrec() { new IntegrationInitialization(agc).lemprec(); }
+        void csmPrec() { new IntegrationInitialization(agc).csmprec(); }
+        void intStall() { new IntegrationInitialization(agc).intstall(); }
+        void integrvs() { new IntegrationInitialization(agc).integrvs(); }
     }
 }

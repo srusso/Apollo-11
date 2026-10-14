@@ -84,7 +84,7 @@ public class RestartsRoutine {
         int phase = tempphs();
         if (phase == 0 || phase == Agc.WORD_MASK) {
             // X.1 restart: start the display restart job
-            new Executive(agc).findvac(PRIO14, () -> new Pinball(agc).initdsp());
+            new Executive(agc).findvac(PRIO14, () -> new DisplayInterfaceRoutines(agc).initdsp());
             rtrncadr();
         } else {
             itsatbl(temp2g);                            // table restart

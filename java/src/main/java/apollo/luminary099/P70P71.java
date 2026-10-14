@@ -57,17 +57,17 @@ public class P70P71 {
     public void r10R11() {
         if ((agc.get("FLAGWRD7") & agc.get("AVEGFBIT")) == 0) {
             // Servicer is running: let AVGEND take care of group 2.
-            new ServiceRoutines(agc).taskover();
+            new Waitlist(agc).taskOver();
             return;
         }
         int pipctr = agc.get("PHSPRDT2");
         if (pipctr == 0) {
-            new Lrhtask(agc).lrhtask();            // last pass
+            new Servicer(agc).lrhtask();            // last pass
             return;
         }
         agc.set("LADQSAVE", pipctr);               // PIPCTR1 = LADQSAVE (decremented value)
         agc.set("A", 025);                          // OCT31
-        new FreshStartAndRestart(agc).twiddle(() -> r10R11());
+        new Waitlist(agc).twiddle(025, () -> r10R11());
     }
 
     /** R10,R11A: flash the H and V lamps unless in lamp test, then proceed. */
@@ -78,11 +78,11 @@ public class P70P71 {
         }
         // FLASHH?
         if ((agc.get("FLGWRD11") & agc.get("HFLASH")) != 0) {
-            new PinballGameButtonsAndLights(agc).flip(agc.get("HLITE"));
+            new P20P25(agc).flip(agc.get("HLITE"));
         }
         // FLASHV?
         if ((agc.get("FLGWRD11") & agc.get("VFLSHBIT")) != 0) {
-            new PinballGameButtonsAndLights(agc).flip(agc.get("VLITE"));
+            new P20P25(agc).flip(agc.get("VLITE"));
         }
         lamp1011();
     }
@@ -115,7 +115,7 @@ public class P70P71 {
     }
 
     private void landisp() {
-        new LandingAnalogDisplaysRoutines(agc).landisp();
+        new LandingAnalogDisplays(agc).landisp();
     }
 
     // ---- P70 / P71 ---------------------------------------------------------------
@@ -174,7 +174,7 @@ public class P70P71 {
         agc.set("DSALMOUT", ds + BIT13);
         agc.set("FLGWRD11", agc.get("LRBYBIT"));    // terminate R12
         agc.set("FLAGWRD0", agc.get("FLAGWRD0") | agc.get("R10FLBIT"));   // suppress R10 outputs
-        new RadarLeadingRoutines(agc).clradmod();    // CLRADMOD: RADMODES for R29
+        new P20P25(agc).clradmod();    // CLRADMOD: RADMODES for R29
         agc.set("TEVENT", agc.get("TIME2"));         // TEVENT for downlink
         agc.set("TEVENT+1", agc.get("TIME1"));
         agc.set("AVGEXIT", agc.get("SERVEXIT"));     // SVEXITAD
@@ -190,7 +190,7 @@ public class P70P71 {
 
     /** GOABORT: restart-group-4.3 entry, sets flags and branches to P70/P71 initialisation. */
     public void goabort() {
-        new Interpreter(agc).callInitcduw();         // CALL INITCDUW
+        new FindcduwGuidapInterface(agc).initcduw();         // CALL INITCDUW
         agc.set("DVCNTR", 4);
         agc.set("WHICH", agc.get("WHICHADR"));
         downflag("FLRCS");
@@ -219,7 +219,7 @@ public class P70P71 {
         setDp("TTO", -dp("DTDECAY") * 2048);                     // DCOMP, SL 11D
         setDp("VE", -dp("DPSVEX") / 4);                          // SLOAD DCOMP, SR2: DPS exhaust velocity
         agc.set("FLAP", 1);                                      // SET FLAP
-        new Interpreter(agc).callCominit();                      // CALL COMMINIT
+        new P12(agc).commInit();                      // CALL COMMINIT
         bothpoly(0);                                             // AXC,1 0D : DPS coefficients
     }
 
@@ -242,7 +242,7 @@ public class P70P71 {
         }
         // UPRATE
         setDp("RDOTD", dp("ABTRDOT"));
-        new Interpreter(agc).callYcomp();                        // compute Y
+        new AscentGuidance(agc).ycomp();                        // compute Y
         double y = dp("Y");
         double yco;
         if (Math.abs(y) - dp("YLIM") < 0) {
@@ -260,8 +260,8 @@ public class P70P71 {
         agc.set("FLVR", 1);                                      // SET FLVR
         upflag("ROTFLAG");
         throtup();
-        new FreshStartAndRestart(agc).phaschng(04024);
-        new Interpreter(agc).bankcallP40auto();                  // verify panel switches
+        new PhaseTableMaintenance(agc).phasChng(04024);
+        new BurnBabyBurn(agc).p40Auto();                  // verify panel switches
         throtup();
         upthrot1();
     }
@@ -274,8 +274,8 @@ public class P70P71 {
 
     /** GRP4OFF: terminate use of group 4. */
     public void grp4off() {
-        new FreshStartAndRestart(agc).phaschng(00004);
-        new Executive(agc).endofjob();
+        new PhaseTableMaintenance(agc).phasChng(00004);
+        new Executive(agc).endOfJob();
     }
 
     /** P71RET: P71 initialisation path. */
@@ -288,14 +288,14 @@ public class P70P71 {
         }
         tgocomp();                                               // FLAP=0: TGO = T - TIG
         agc.set("QPRET", agc.get("INJTARG"));
-        new Interpreter(agc).callP12init();                      // exits P12INIT to INJTARG
+        new P12(agc).p12Init();                      // exits P12INIT to INJTARG
     }
 
     /** OLDTIME: if FLAP=1, TGO := 2*TGO. */
     public void oldtime() {
         setDp("TGO1", dp("TGO") * 2);                            // SL1 ... STCALL TGO1
-        new Interpreter(agc).callP12init();
-        new FreshStartAndRestart(agc).phaschng(04024);
+        new P12(agc).p12Init();
+        new PhaseTableMaintenance(agc).phasChng(04024);
         agc.set("TGO", agc.get("TGO1"));
         agc.set("TGO+1", agc.get("TGO1+1"));
         upthrot1();
@@ -315,9 +315,9 @@ public class P70P71 {
 
     /** ABORTALM: alarm, release display and re-enter PINBALL. */
     public void abortalm() {
-        new Alarm(agc).falton();
+        new PinballGameButtonsAndLights(agc).falton();
         new PinballGameButtonsAndLights(agc).reldsp();
-        new InterBankCommunication(agc).postjump(0, () -> new PinballGameButtonsAndLights(agc).pinbrnch());
+        new InterBankCommunication(agc).postjump(0, () -> new DisplayInterfaceRoutines(agc).pinBrnch());
     }
 
     /** TGOCOMP: TGO = (TIME - TIG) * 2^11 (RTB LOADTIME; DSU TIG; SL 11D). */
@@ -335,11 +335,11 @@ public class P70P71 {
 
     // ---- flag helpers --------------------------------------------------------------
     private void upflag(String flag) {
-        new FlagwordAssignments(agc).upflag(flag);
+        agc.set(flag, 1);
     }
 
     private void downflag(String flag) {
-        new FlagwordAssignments(agc).downflag(flag);
+        agc.set(flag, 0);
     }
 
     /** ATMAGAD / ORBMANAD cells: referenced as 2CADR / ADRES constants elsewhere. */

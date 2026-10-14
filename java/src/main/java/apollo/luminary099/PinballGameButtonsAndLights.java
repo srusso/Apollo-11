@@ -95,7 +95,7 @@ public class PinballGameButtonsAndLights {
     private void s(String sym, int v) { agc.set(sym, v); }
     private static int sgn(int w) { return Agc.toSigned(w); }
     private static int neg(int w) { return ~w & Agc.WORD_MASK; }
-    private void endofjob() { new Executive(agc).endofjob(); }
+    private void endofjob() { new Executive(agc).endOfJob(); }
     private void inrel(int v) { s("INREL", v); }
     private int inrel() { return g("INREL"); }
 
@@ -170,7 +170,7 @@ public class PinballGameButtonsAndLights {
         }
         getinrel();
         if (sgn(g("CLPASS")) >= 0) s("CLPASS", 0);          // + or +0 becomes +0
-        int code = RELTAB[g("CHAR") & 7 > 9 ? 0 : relIndex(g("CHAR"))] & LOW5;
+        int code = RELTAB[(g("CHAR") & 017) > 9 ? 0 : relIndex(g("CHAR"))] & LOW5;
         s("CODE", code);
         s("COUNT", g("DSPCOUNT"));
         dspin();
@@ -271,7 +271,7 @@ public class PinballGameButtonsAndLights {
     /** GETINREL: INREL := INRELTAB[DSPCOUNT] (0 VERBREG, 1 NOUNREG, 2 XREG, 3 YREG, 4 ZREG). */
     public void getinrel() {
         int idx = g("DSPCOUNT");
-        if (idx == 15) { new AlarmAndAbort(agc).ccshole(); return; }
+        if (idx == 15) { new AlarmAndAbort(agc).ccsHole(); return; }
         inrel(INRELTAB[Math.min(idx, 19)]);
     }
 
@@ -1404,14 +1404,14 @@ public class PinballGameButtonsAndLights {
         }
         new Waitlist(agc).waitlist(MONDEL, this::monreq);
         new Executive(agc).novac(CHRPRIO, this::mondo);
-        new Waitlist(agc).taskover();
+        new Waitlist(agc).taskOver();
     }
 
     /** KILLMON: zero MONSAVE and MONSAVE1 (killer and external monitor bits off). */
     public void killmon() {
         s("MONSAVE", 0);
         s("MONSAVE1", 0);
-        new Waitlist(agc).taskover();
+        new Waitlist(agc).taskOver();
     }
 
     /** MONDO: Executive job each second; redisplay the noun with the display verb. */
@@ -1691,7 +1691,7 @@ public class PinballGameButtonsAndLights {
         int prio = g("DSPTEM1") & ~BIT1;
         reldsp();
         if (findvac) {
-            new Executive(agc).findvac(prio, () -> new Executive(agc).startJob(g("DSPTEM1+1"), g("DSPTEM1+2")));
+            new Executive(agc).findVac(prio, () -> new Executive(agc).startJob(g("DSPTEM1+1"), g("DSPTEM1+2")));
         } else {
             new Executive(agc).novac(prio, () -> new Executive(agc).startJob(g("DSPTEM1+1"), g("DSPTEM1+2")));
         }
@@ -1765,7 +1765,7 @@ public class PinballGameButtonsAndLights {
     public void tstlts4() {
         reldsp();
         if (sgn(g("CADRSTOR")) != 0) {
-            new DisplayInterfaceRoutines(agc).pinbrnch();
+            new DisplayInterfaceRoutines(agc).pinBrnch();
         } else {
             endofjob();
         }
@@ -1892,7 +1892,7 @@ public class PinballGameButtonsAndLights {
         iscadr0();
         islist0();
         s("CADRSTOR", (cadr & LOW10) + g("FBANK"));
-        new Executive(agc).jobsleep();
+        new Executive(agc).jobSleep(g("CADRSTOR"), () -> { });
     }
 
     /** ISCADR+0: abort 01206 if CADRSTOR is not +0. */
@@ -1980,7 +1980,7 @@ public class PinballGameButtonsAndLights {
         if (sgn(g("CADRSTOR")) == 0 && g("CADRSTOR") == 0) { endofjob(); return; }   // keyboard initiated
         int cadr = g("CADRSTOR");
         s("CADRSTOR", 0);
-        new Executive(agc).jobwake(cadr);
+        new Executive(agc).jobWake(cadr);
         int stat = sgn(g("LOADSTAT"));
         int offset;
         if (stat > 0) {
@@ -2085,7 +2085,7 @@ public class PinballGameButtonsAndLights {
         islist0();
         relDspOn();
         s("DSPLIST", wake);
-        new Executive(agc).jobsleep();
+        new Executive(agc).jobSleep(wake, () -> { });
     }
 
     /**
@@ -2110,7 +2110,7 @@ public class PinballGameButtonsAndLights {
         if (sgn(g("DSPLIST")) > 0) {
             int cadr = g("DSPLIST");
             s("DSPLIST", 0);
-            new Executive(agc).jobwake(cadr);
+            new Executive(agc).jobWake(cadr);
         }
         reldsp2();
     }
@@ -2156,7 +2156,7 @@ public class PinballGameButtonsAndLights {
     /** TSTLTS2: waitlist task; enters TSTLTS3 as an Executive job. */
     public void tstlts2() {
         new Executive(agc).novac(CHRPRIO, this::tstlts3);
-        new Waitlist(agc).taskover();
+        new Waitlist(agc).taskOver();
     }
 
     /** TSTLTS3: restore the lamps; lamp test complete. */
@@ -2217,4 +2217,57 @@ public class PinballGameButtonsAndLights {
     public void reldspon() { relDspOn(); }
 
     // The PINTEST label is just an alias for LST2FAN in EXTENDED_VERBS.
+
+    // ======================================================================================
+    // Display-request adapters used by the programs (result: Executive.TERMINATE/PROCEED/RECYCLE)
+    // ======================================================================================
+
+    /** Converts "V06N18" (or a plain decimal string) to the verb*100+noun code of the display routines. */
+    private static int vnCode(String vn) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("V?(\\d+)N(\\d+)").matcher(vn);
+        if (m.matches()) {
+            return Integer.parseInt(m.group(1)) * 100 + Integer.parseInt(m.group(2));
+        }
+        return Integer.parseInt(vn.trim());
+    }
+
+    /** GOFLASH: flash a verb/noun; the model has no keyboard, so the response is always PROCEED. */
+    public int goflash(String vn) {
+        new DisplayInterfaceRoutines(agc).goFlash(vnCode(vn));
+        return Executive.PROCEED;
+    }
+
+    /** GOFLASHR: restart-protected GOFLASH. */
+    public int goflashr(String vn) {
+        new DisplayInterfaceRoutines(agc).goFlashR(vnCode(vn));
+        return Executive.PROCEED;
+    }
+
+    /** GOMARKF: flashing mark display. */
+    public int gomarkf(String vn) {
+        new DisplayInterfaceRoutines(agc).goMarkF(vnCode(vn));
+        return Executive.PROCEED;
+    }
+
+    /** GOPERF2R: restart-protected perform display. */
+    public int goperf2r(String vn) {
+        new DisplayInterfaceRoutines(agc).goPerf2R(vnCode(vn));
+        return Executive.PROCEED;
+    }
+
+    /** GOPERF1: perform display with NORMTEM1 = code. */
+    public int gopErf1(int code) {
+        new DisplayInterfaceRoutines(agc).goPerf1(code);
+        return Executive.PROCEED;
+    }
+
+    /** GODSPR: restart-protected static display. */
+    public void godspr(String vn) {
+        new DisplayInterfaceRoutines(agc).goDspR(vnCode(vn));
+    }
+
+    /** LINUS: priority display request. TODO: untranslated from PINBALL_GAME__BUTTONS_AND_LIGHTS.agc. */
+    public void linus(int mask) {
+        // TODO: untranslated - the priority display request has no Java counterpart
+    }
 }

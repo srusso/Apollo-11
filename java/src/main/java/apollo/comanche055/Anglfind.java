@@ -47,6 +47,13 @@ public final class Anglfind {
     public double cam;
     public double am;
 
+    private static final java.util.Map<Agc, Anglfind> INSTANCES = new java.util.WeakHashMap<>();
+
+    /** Shared per-AGC instance so the working storage (MIS, MFS, DEL, ...) is common to all callers. */
+    public static synchronized Anglfind of(Agc agc) {
+        return INSTANCES.computeIfAbsent(agc, Anglfind::new);
+    }
+
     public Anglfind(Agc agc) {
         this.agc = agc;
     }
@@ -110,7 +117,7 @@ public final class Anglfind {
     public void checkmax() {
         if (am - MAXANG < 0) {
             cof = unit(cofskew);                 // COF is the maneuver axis
-            new GimbalLockAvoidance(agc).locskirt();   // see if maneuver goes through gimbal lock
+            new GimbalLockAvoidance(agc).locskirt(cof, am);   // see if maneuver goes through gimbal lock
         } else {
             altcalc();
         }
@@ -162,7 +169,7 @@ public final class Anglfind {
         if (mfisym[5] < 0) {                     // sign of UZ opposite to UY
             cof[2] = -cof[2];
         }
-        new GimbalLockAvoidance(agc).locskirt();
+        new GimbalLockAvoidance(agc).locskirt(cof, am);
     }
 
     /** METHOD1: COFX is the maximum. */
@@ -176,7 +183,7 @@ public final class Anglfind {
         if (mfisym[2] < 0) {                     // sign of UZ opposite to UX
             cof[2] = -cof[2];
         }
-        new GimbalLockAvoidance(agc).locskirt();
+        new GimbalLockAvoidance(agc).locskirt(cof, am);
     }
 
     /** METHOD3: COFZ is the maximum. */
@@ -190,7 +197,7 @@ public final class Anglfind {
         if (mfisym[5] < 0) {                     // sign of UY opposite to UZ
             cof[1] = -cof[1];
         }
-        new GimbalLockAvoidance(agc).locskirt();
+        new GimbalLockAvoidance(agc).locskirt(cof, am);
     }
 
     // ---------------------------------------------------------------------------------------

@@ -283,7 +283,7 @@ public final class FreshStartAndRestart {
             // IF NO ATT LAMP WAS ON, RETURN ISS TO COARSE ALIGN (SETCOARS) and wait 6 cs for CA+ECE
             if ((dsp & 010) != 0) {
                 new ImuModeSwitchingRoutines(agc).setcoars();
-                new Waitlist(agc).waitlist(6, () -> new ImuCalibrationAndAlignment(agc).caEce());
+                new Waitlist(agc).waitlist(6, () -> new ImuModeSwitchingRoutines(agc).caEce());
             }
         }
         agc.set("IMODES30", (IFAILINH & agc.get("IMODES30")) + IM30INIR);   // keep failure inhibits
@@ -328,10 +328,10 @@ public final class FreshStartAndRestart {
             }
         }
         agc.set("MPAC+6", 0);
-        new PinballGameButtonsAndLights(agc).mmdsplay();          // display major mode
+        new PhaseTableMaintenance(agc).mmdsplay();          // display major mode
         if ((agc.get("FLAGWRD6") & 060000) != 0) {                // RCS DAP running: do STOPRATE
             agc.set("EBANK", 06);
-            new RcsCsmDigitalAutopilot(agc).stoprate();
+            new KalcmanuSteering(agc).stoprate();
             agc.set("EBANK", 03);
         }
         for (int g = NUMGRPS; g >= 0; g--) {                      // NXTRST
@@ -339,7 +339,7 @@ public final class FreshStartAndRestart {
             if (phase > 0) {                                      // PACTIVE
                 agc.set("MPAC", phase + 1);                       // abs of phase
                 agc.set("MPAC+6", agc.get("MPAC+6") + 1);         // group demands present
-                new RestartsRoutine(agc).restarts(g);             // CA RACTCADR ; TC SWCALL
+                new RestartsRoutine(agc).restarts(grp -> () -> { /* TODO: dispatch PHSNAMEn 2CADR (RACTCADR) for group grp */ });             // CA RACTCADR ; TC SWCALL
             }
         }
         if (agc.get("MPAC+6") != 0) {
@@ -450,10 +450,10 @@ public final class FreshStartAndRestart {
     /** GOP00FIX: display V37N99 flash and wait for response. */
     public void gop00fix() {
         initsub();
-        new PinballGameButtonsAndLights(agc).clearmrk(2);
+        new DisplayInterfaceRoutines(agc).clearmrk();
         int reply;
         do {
-            reply = new DisplayInterfaceRoutines(agc).goflash(03799);
+            reply = new DisplayInterfaceRoutines(agc).goflash(3799);
         } while (reply == 0 /* terminate/proceed/enter: all retry */ || true && reply < 0);
     }
 
@@ -482,10 +482,10 @@ public final class FreshStartAndRestart {
         agc.set("EBANK", 06);
         agc.set("MASSTMP", agc.get("CSMMASS"));
         ImuModeSwitchingRoutines dummy = null;
-        new PoweredFlightSubroutines(agc).spsoff();
-        new TvcInitialize(agc).massprop();
-        new RcsCsmDapExecutivePrograms(agc).rcsdapon(03 /* 3.1 SEC = 037312 */);
-        new TvcInitialize(agc).tvczap();                          // disable TVC
+        new P40P47(agc).spsoff();
+        new TvcMassprop(agc).massprop();
+        new P40P47(agc).rcsdaponPlus1(037312 /* 3.1 SEC */);
+        new P40P47(agc).tvczap();                          // disable TVC
         agc.set("MMNUMBER", 0);
         new ServiceRoutines(agc).delayjob(5);
         agc.set("CHAN5", 0);
@@ -516,7 +516,7 @@ public final class FreshStartAndRestart {
     /** V37BAD: release the display and bring back the last normal display. */
     private void v37bad() {
         new PinballGameButtonsAndLights(agc).reldsp();
-        new PinballGameButtonsAndLights(agc).pinbrnch();
+        new DisplayInterfaceRoutines(agc).pinbrnch();
     }
 
     /** CHECKTAB: find the requested major mode in PREMM1; index saved in MINDEX. */
@@ -571,9 +571,9 @@ public final class FreshStartAndRestart {
         agc.set("CHAN12", agc.get("CHAN12") & OCT44571);          // clear optics/star tracker/TVC enable etc.
         agc.set("CHAN13", agc.get("CHAN13") & ~OCT600 & Agc.WORD_MASK);       // clear unused bits
         initsub();
-        new PinballGameButtonsAndLights(agc).clearmrk(0);
+        new DisplayInterfaceRoutines(agc).clearmrk();
         setFlag("STIKFLAG", false);
-        new T4rupt(agc).upactoff();                               // turn off uplink activity light
+        new UpdateProgram(agc).upactoff();                               // turn off uplink activity light
         setFlag("VHFRFLAG", false);
         setFlag("R21MARK", false);
         if (agc.get("MMNUMBER") != 0) {
@@ -691,11 +691,11 @@ public final class FreshStartAndRestart {
     /** INITSUB: set deadband, clear flagword bits per FLAGTABL, set IMPULSW and OPTIND. */
     public void initsub() {
         agc.set("EBANK", 06);
-        new RcsCsmDigitalAutopilot(agc).stoprate();
+        new KalcmanuSteering(agc).stoprate();
         if ((agc.get("FLAGWRD9") & MAXDBBIT) != 0) {
-            new RcsCsmDapExecutivePrograms(agc).setmaxdb();       // max deadband selected
+            new P40P47(agc).setmaxdb();       // max deadband selected
         } else {
-            new RcsCsmDapExecutivePrograms(agc).setmindb();       // min deadband selected
+            new P40P47(agc).setmindb();       // min deadband selected
         }
         for (int i = 11; i >= 0; i--) {                           // RAKE: clear flagword bits
             String w = "FLAGWRD" + i;
@@ -719,7 +719,7 @@ public final class FreshStartAndRestart {
             agc.set(DpWords.off("VAC5", itemp2), agc.get(DpWords.off("LOC", itemp1)));
             agc.set(DpWords.off("VAC5", itemp2 + 1), agc.get(DpWords.off("LOC", itemp1 + 1)));
             agc.set(DpWords.off("VAC5", itemp2 + 2), agc.get(DpWords.off("PRIORITY", itemp1)));
-            if (itemp2 + 3 == 018) {                              // EIGHTEEN = OCT 22
+            if (itemp2 + 3 == 18) {                              // EIGHTEEN = OCT 22
                 break;
             }
         }
@@ -746,7 +746,7 @@ public final class FreshStartAndRestart {
      * are erasable flag symbols.
      */
     public void stateup() {
-        OrbitalIntegration oi = new OrbitalIntegration(agc);
+        IntegrationInitialization oi = new IntegrationInitialization(agc);
         setFlag("VINTFLAG", true);
         if (!flag("ORBWFLAG")) {
             setFlag("DIM0FLAG", true);

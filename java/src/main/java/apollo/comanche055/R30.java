@@ -106,9 +106,11 @@ public final class R30 {
         DpWords.set(agc, "TSTART82", now);          // time for internal use
         int x2;                                     // 0 = Earth centred, 2 = Moon centred
         if (agc.get("OPTIONX+1") == 1) {
-            x2 = new TagsForRelativeSetloc(agc).thisprec();
+            new IntegrationInitialization(agc).csmprec();       // THISPREC: this vehicle is the CSM
+            x2 = flag("MOONFLAG") ? 2 : 0;
         } else {
-            x2 = new TagsForRelativeSetloc(agc).othprec();
+            new IntegrationInitialization(agc).othprec();
+            x2 = flag("MOONFLAG") ? 2 : 0;
         }
         // BOTHSHIP: move results into TFFCONIC storage areas
         DpWords.setVec(agc, "RONE", DpWords.getVec(agc, "RATT"));   // (-29) m
@@ -224,14 +226,16 @@ public final class R30 {
     /** CANDEL: call DELRSPL (does INTWAKE) with TFF in MPAC, then resume (SPLRET). */
     private void candel() {
         new IntegrationInitialization(agc).intstall();
-        new P30P37(agc).delrspl(DpWords.get(agc, "TFF"));
+        new P30P37(agc).delrspl(DpWords.get(agc, "TFF"), DpWords.get(agc, "GAMMAEI"),
+                DpWords.get(agc, "LAT"), DpWords.get(agc, "THETA1"), DpWords.get(agc, "TDEC1"));
         if (agc.get("MODREG") == 0) {
             splret1();
         }
     }
 
     private double loadtime() {
-        return new Rt8OpCodes(agc).loadtime();
+        new Rt8OpCodes(agc).loadtime();
+        return DpWords.get(agc, "MPAC");
     }
 
     /**
@@ -247,7 +251,7 @@ public final class R30 {
             DpWords.setVec(agc, "VONE", DpWords.scale(v, 4));
         }
         TimeOfFreeFall tff = new TimeOfFreeFall(agc);
-        tff.tffconmu();
+        tff.tffconmu(DpWords.getVec(agc, "RONE"), DpWords.getVec(agc, "VONE"));
         tff.tffrpRa();                              // RAPO in MPAC; RAPO, RPER stored
         double rpadtem = DpWords.get(agc, "RPADTEM");
         double hapo = DpWords.get(agc, "RAPO") - rpadtem;
@@ -263,13 +267,13 @@ public final class R30 {
         DpWords.set(agc, "HPERX", maxchk(hper));    // STORHPER
         double negTper;
         if (hperForCompare - DpWords.get(agc, "HPERMIN") >= 0) {   // DOTPER
-            negTper = -tff.calctper(DpWords.get(agc, "RPER"));      // TPER stored negative
+            negTper = -tff.calctper(DpWords.get(agc, "RPER"), DpWords.getVec(agc, "RONE"));      // TPER stored negative
         } else {
             negTper = 0;                            // HI6ZEROS
         }
         DpWords.set(agc, "-TPER", negTper);         // SKIPTPER
         double rLimit = DpWords.get(agc, "HPERMIN") + rpadtem;
-        DpWords.set(agc, "TFF", -tff.calctff(rLimit)); // 59M59S if RPER > HPERMIN + RPADTEM
+        DpWords.set(agc, "TFF", -tff.calctff(rLimit, DpWords.getVec(agc, "RONE"))); // 59M59S if RPER > HPERMIN + RPADTEM
     }
 
     /** MAXCHK: limit a distance to 9999.9 NM (MAXNM); also used by P30-P37. */

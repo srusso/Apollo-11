@@ -1161,4 +1161,119 @@ public class Interpreter {
         }
         setMpacDp(dec(Math.acos(x) / (2 * Math.PI)));
     }
+
+    // =====================================================================
+    // Basic-language entry points used by other programs (RTB op codes, PINBALL, ...)
+    // =====================================================================
+
+    /** SLOAD2: load the pair (A, L) into MPAC, MPAC+1 (DP mode). */
+    public void sload2() {
+        agc.set("MPAC", agc.get("A"));
+        agc.set("MPAC+1", agc.get("L"));
+        setMode(MODE_DP);
+    }
+
+    /** SLOAD2 followed by clearing MPAC+2 (the DPMODE exit). */
+    public void sload2Plus2() {
+        agc.set("MPAC+2", 0);
+        sload2();
+    }
+
+    /** DANZIG: return to the interpretive dispatcher; a no-op in this model. */
+    public void danzig() {
+        // control returns to the Java caller
+    }
+
+    /** NEWMODE: set the interpreter mode (0 = DP, 1 = TP, -1 = vector). */
+    public void newmode(int m) {
+        setMode(m);
+    }
+
+    /** VECAGREE: force sign agreement within each DP component of the vector in MPAC. */
+    public void vecagree() {
+        for (String c : new String[] {"MPAC", "MPAC+3", "MPAC+5"}) {
+            putDp(c, dp(c));
+        }
+    }
+
+    /** UNIT+1: UNIT without the preceding VECAGREE. */
+    public void unitPlus1() {
+        unit();
+    }
+
+    /** DMP of MPAC by a DP constant given as two single-precision words (hi, lo). */
+    public void dmp(int hi, int lo) {
+        putDp("MPAC", saturate(mulDp(mpacDp(), ((long) Agc.toSigned(hi) << 14) + Agc.toSigned(lo), true)));
+    }
+
+    /** DMP of MPAC by a DP constant given as a fraction (|c| &lt; 1). */
+    public void dmp(double c) {
+        dmpConst(c);
+    }
+
+    /** As {@link #dmp(double)}: multiply MPAC by a DP constant. */
+    public void dmpConst(double c) {
+        putDp("MPAC", saturate(mulDp(mpacDp(), Math.round(c * ONE_DP), true)));
+    }
+
+    /** DMP by the DP number stored at {@code sym}. */
+    public void dmpAt(String sym) {
+        dmpsub(sym);
+    }
+
+    /** SHORTMP with a DP multiplier given as (hi, lo): MPAC times the constant. */
+    public void shortmpDp(int hi, int lo) {
+        dmp(hi, lo);
+    }
+
+    /** PRSHRTMP: product of two single-precision fractions into MPAC (DP). */
+    public void prshrtmp(int a, int b) {
+        putDp("MPAC", (long) Agc.toSigned(a) * Agc.toSigned(b));
+        agc.set("MPAC+2", 0);
+    }
+
+    /** MPHI-style product of two single-precision fractions into MPAC (DP). */
+    public void mpHi(int a, int b) {
+        prshrtmp(a, b);
+    }
+
+    /** TPLEFTN: shift the TP MPAC left n places. */
+    public void tpleftn(int n) {
+        putTp("MPAC", tp("MPAC") << n);
+    }
+
+    /** TPSL1: shift the TP MPAC left one place. */
+    public void tpsl1() {
+        tpleftn(1);
+    }
+
+    /** VXSC by a DP constant (long, ONE_DP scale) rather than an erasable address. */
+    public void vxsc(long k) {
+        long[] m = mpacVec();
+        setMpacVec(new long[] {rnd(m[0], k), rnd(m[1], k), rnd(m[2], k)});
+    }
+
+    /** VAD of a vector constant (DP components, ONE_DP scale). */
+    public void vad(long[] c) {
+        long[] m = mpacVec();
+        setMpacVec(new long[] {m[0] + c[0], m[1] + c[1], m[2] + c[2]});
+    }
+
+    public void vsl2() { vsl(2); }
+    public void vsl8() { vsl(8); }
+
+    /** STOVL with the vector load taken from the push-down list (nothing further to load here). */
+    public void stovl(String storeAddr) {
+        store(storeAddr);
+    }
+
+    /** RTB to a named basic-language routine (the ones used by interpretive code in this package). */
+    public void rtb(String routine) {
+        switch (routine) {
+            case "LOADTIME": rtb(() -> new RtbOpCodes(agc).loadtime()); break;
+            case "VECSGNAG": rtb(() -> new RtbOpCodes(agc).vecsgnag()); break;
+            case "SGNAGREE": rtb(() -> new RtbOpCodes(agc).sgnagree()); break;
+            default: throw new UnsupportedOperationException("RTB " + routine);
+        }
+    }
 }

@@ -80,7 +80,7 @@ public final class ServiceRoutines {
         // caller's cadr in DELAYLOC and JOBSLEEPs.
         agc.set("RUPTREG1", slot);
         agc.set("DELAYLOC" + slot, 1); // marks the slot busy (caller's FCADR in the original)
-        new Waitlist(agc).dly(dt, () -> waker(agc.get("RUPTREG1")));
+        new Waitlist(agc).waitlist(dt, () -> waker(agc.get("RUPTREG1")));
         new Executive(agc).jobsleep();
     }
 

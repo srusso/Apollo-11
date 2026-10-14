@@ -12,7 +12,7 @@ import apollo.agc.Agc;
 public final class R6062 {
     public static final int BIT5 = 020, BIT6 = 040, BIT7 = 0100, BIT12 = 04000;
     public static final int BIT14_7 = 020100;
-    public static final int V06N18 = 0618;           // VN 0618 : display "please perform auto maneuver"
+    public static final int V06N18 = 618;           // VN 0618 : display "please perform auto maneuver"
     public static final int V06N22 = 0622;           // display commanded ICDUs
     public static final int PRIO14 = 014, PRIO30 = 030;
     public static final int OCT71 = 071;             // 1.7SPOT for RELINUS
@@ -343,18 +343,18 @@ public final class R6062 {
     private int displayGoperf2r(int vn) { return new Pinball(agc).goperf2r(vn); }
     private void displayGodspr(int vn) { new Pinball(agc).godspr(vn); }
     private int goflash(int vn) { return new Pinball(agc).goflash(vn); }
-    private void gomanur() { new AutomaticManeuvers(agc).gomanur(); }
-    private void phaschng(int code) { new RestartsRoutine(agc).phaschng(code); }
+    private void gomanur() { new ImuModeSwitchingRoutines(agc).gomanur(); }
+    private void phaschng(int code) { new PhaseTableMaintenance(agc).phaschng(code); }
     private void linus(int bits) { new Pinball(agc).linus(bits); }
     private void upflag(String flag) { agc.set(flag, 1); }
     private void endext() { new ExtendedVerbs(agc).endext(); }
-    private void gotov56() { new ExtendedVerbs(agc).gotov56(); }
-    private void gotopooh() { new ExtendedVerbs(agc).gotopooh(); }
-    private void readcduk() { new Rt8OpCodes(agc).readcduk(); }
-    private void cdutodcm() { new Anglfind(agc).cdutodcm(); }
-    private void delcomp() { new Anglfind(agc).delcomp(); }
-    private void mxm3() { new Anglfind(agc).mxm3(); }
-    private void dcmtocdu() { new Anglfind(agc).dcmtocdu(); }
+    private void gotov56() { new P20P25(agc).gotov56(); }
+    private void gotopooh() { new FreshStartAndRestart(agc).gotopooh(); }
+    private void readcduk() { { Anglfind af = Anglfind.of(agc); af.bcdu = af.readcduk(); } }
+    private void cdutodcm() { { Anglfind af = Anglfind.of(agc); af.mis = Anglfind.cdutodcm(af.bcdu); } }
+    private void delcomp() { Anglfind.of(agc).delcomp(Anglfind.of(agc).am); }
+    private void mxm3() { { Anglfind af = Anglfind.of(agc); af.mfs = Anglfind.mxm3(af.mis, af.del); } }
+    private void dcmtocdu() { { Anglfind af = Anglfind.of(agc); af.cphi = af.dcmtocdu(af.mfs); } }
     private void v1sto2s() { new Rt8OpCodes(agc).v1sto2s(); }
 
     /** Placeholder naming for the PINBALL display routines (GOPERF2R, GODSPR, GOFLASH, LINUS). */

@@ -2271,4 +2271,11 @@ public class P20P25 {
         RRDATABT = BIT4;
     public static final int OLDESBIT = BIT2, READRBIT = BIT9, SCABBIT = BIT7, LRALTBIT = BIT5, HFLSHBIT = BIT3,
         VFLSHBIT = BIT4, HLITE = BIT5, VLITE = BIT3;
+
+    /** FLIP: toggle the DSPTAB+11D relay bits selected by the mask in L (used by R10 lamps). */
+    public void flip(int lchan) {
+        int cur = agc.get("DSPTAB+11D");
+        int flipped = (cur ^ lchan) & 037777;          // RXOR LCHAN ; MASK POSMAX
+        agc.set("DSPTAB+11D", Agc.add(flipped, 040000)); // AD BIT15
+    }
 }

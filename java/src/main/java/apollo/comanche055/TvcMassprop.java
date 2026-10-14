@@ -64,7 +64,13 @@ public final class TvcMassprop {
             v[1] += v[8]; // DXCH VARST0+8D ; DAS VARST0+1
             v[7] += DXITFIX; // ADS VARST0+7
         }
+        System.arraycopy(v, 0, varst, 0, 10);     // keep VARST0.. for later FIXCW calls (GAINCHNG)
         fixcw(v);
+    }
+
+    /** FIXCW entry from GAINCHNG: recompute IXX from the VARST table built by MASSPROP. */
+    public void fixcw() {
+        fixcw(java.util.Arrays.copyOf(varst, 10));
     }
 
     /** FIXCW: computation phase. Three passes, selects slope set by sign of delta CSM weight. */

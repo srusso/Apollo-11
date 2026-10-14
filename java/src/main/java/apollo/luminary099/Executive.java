@@ -25,6 +25,10 @@ public class Executive {
     public static final int ALARM_NO_VAC = 01201;
     public static final int ALARM_NO_CORE = 01202;
     public static final int NEG100 = 077677;
+    /** Responses of the flash/perform display routines (return offsets L+1, L+2, L+3). */
+    public static final int TERMINATE = 0;
+    public static final int PROCEED = 1;
+    public static final int RECYCLE = 2;
 
     /** One executive core set. */
     public static final class CoreSet {
@@ -241,5 +245,18 @@ public class Executive {
     private void bailout(int code) {
         agc.set("BAILOUT", code);
         throw new IllegalStateException("BAILOUT " + Integer.toOctalString(code));
+    }
+
+    /**
+     * Start the job named by a 2CADR (address, BBCON) pair, as used by V30/V31 and the restart
+     * tables. TODO: untranslated - the model has no address-to-Runnable map, so this does nothing.
+     */
+    public void startJob(int cadr, int bbcon) {
+        // TODO: untranslated from EXECUTIVE.agc (2CADR job entry has no Java counterpart)
+    }
+
+    /** SUPDXCHZ with an (address, BBCON) pair. TODO: untranslated; the pair has no Java counterpart. */
+    public void supdxchz(int cadr, int bbcon) {
+        // TODO: untranslated from INTER-BANK_COMMUNICATION.agc (DTCB with superbit switch)
     }
 }
